@@ -38,6 +38,8 @@ class PreferencesStore {
           ]
         : normalizedPlaces!;
     return AppSettings(
+      compactSavedItems:
+          await _preferences.getBool('display.compactSavedItems') ?? false,
       name: await _preferences.getString('profile.name') ?? 'Adi',
       university:
           await _preferences.getString('profile.university') ??
@@ -59,6 +61,11 @@ class PreferencesStore {
   }
 
   Future<void> save(AppSettings settings) async {
+    // keep the list choice for next time too.
+    await _preferences.setBool(
+      'display.compactSavedItems',
+      settings.compactSavedItems,
+    );
     await _preferences.setString('profile.name', settings.name);
     await _preferences.setString('profile.university', settings.university);
     await _preferences.setInt('budget.weeklyCents', settings.weeklyBudgetCents);
