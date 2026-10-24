@@ -434,10 +434,7 @@ class _LogScreenState extends State<LogScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete saved item?'),
-        content: Text(
-          '“${item.name}” will be removed from saved items. Purchase history stays.',
-        ),
+        title: Text('Delete “${item.name}”?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
