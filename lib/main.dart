@@ -211,9 +211,10 @@ class _AppShellState extends State<AppShell> {
     });
   }
 
-  void _openActivity() {
+  // hey willow, this budget shortcut goes to Settings, not the meal plans.
+  void _openSettings() {
     setState(() {
-      _selectedIndex = 1;
+      _selectedIndex = 4;
       _menuStore = null;
     });
   }
@@ -258,7 +259,7 @@ class _AppShellState extends State<AppShell> {
                 controller: widget.controller,
                 onOpenMenu: _openMenu,
                 onOpenLog: _openLog,
-                onOpenActivity: _openActivity,
+                onOpenSettings: _openSettings,
               ),
               ActivityScreen(controller: widget.controller),
               LogScreen(

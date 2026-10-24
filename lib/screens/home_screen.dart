@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../widgets/page_help.dart';
-
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -24,13 +22,13 @@ class HomeScreen extends StatelessWidget {
     required this.controller,
     required this.onOpenMenu,
     required this.onOpenLog,
-    required this.onOpenActivity,
+    required this.onOpenSettings,
   });
 
   final AppController controller;
   final ValueChanged<String> onOpenMenu;
   final VoidCallback onOpenLog;
-  final VoidCallback onOpenActivity;
+  final VoidCallback onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -95,13 +93,6 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ],
-        ),
-        const Align(
-          alignment: Alignment.centerRight,
-          child: PageHelp(
-            title: 'Home',
-            message: 'The big number is what you have left today. Weekly money is under the bar. Tap a saved meal to plan it, or Log purchase if you already bought something.',
-          ),
         ),
         const SizedBox(height: 30),
         Text(
@@ -199,7 +190,7 @@ class HomeScreen extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'Today at a glance',
+                'Today',
                 style: Theme.of(context).textTheme.titleLarge
                     ?.copyWith(fontWeight: appHeadingWeight, color: appInk),
               ),
@@ -217,14 +208,15 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
+        // weekly balance is already up top, keep this part about today.
         _DailyGlance(
           remaining: controller.remainingTodayCents,
           allowance: controller.settings.dailyBudgetCents,
-          onAdjust: onOpenActivity,
+          onAdjust: onOpenSettings,
         ),
         const SizedBox(height: 20),
         SectionHeading(
-          'Grab a bite',
+          'Places',
           fontWeight: appHeadingWeight,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
@@ -410,8 +402,8 @@ class HomeScreen extends StatelessWidget {
                                     : isBrickstone
                                     ? 'Pizza · pasta · sandwiches'
                                     : items.isEmpty
-                                    ? 'Tap to open saved menu'
-                                    : '${items.length} saved items · tap to open',
+                                    ? 'View menu'
+                                    : '${items.length} saved meals',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -519,33 +511,6 @@ class HomeScreen extends StatelessWidget {
               },
             ),
           ),
-        const SizedBox(height: 20),
-        SectionHeading('Your week'),
-        const SizedBox(height: 8),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Suggested for today: ${formatMoney(controller.suggestedDailyBudgetCents)}',
-                style: const TextStyle(
-                  fontWeight: appEmphasisWeight,
-                  color: appInk,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Simple plan based on what is left in the weekly budget. ${controller.suggestionExplanation}.',
-                style: const TextStyle(color: appMuted),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${controller.confirmedPurchases.length} confirmed purchases recorded',
-                style: const TextStyle(fontSize: 12, color: appMuted),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -721,7 +686,7 @@ class _DailyGlance extends StatelessWidget {
           child: Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: isOver ? 'You are ' : 'You have '),
+                // just the amount and what it means, no long sentence.
                 TextSpan(
                   text: amount,
                   style: TextStyle(
@@ -729,11 +694,7 @@ class _DailyGlance extends StatelessWidget {
                     fontWeight: FontWeight.w400,
                   ),
                 ),
-                TextSpan(
-                  text: isOver
-                      ? ' over today’s allowance'
-                      : ' left to spend for the day',
-                ),
+                TextSpan(text: isOver ? ' over today’s budget' : ' left today'),
               ],
             ),
             style: Theme.of(context).textTheme.bodyLarge
@@ -750,7 +711,7 @@ class _DailyGlance extends StatelessWidget {
             spacing: 2,
             children: [
               Text(
-                'Daily allowance ${formatMoney(allowance)}',
+                'Daily budget ${formatMoney(allowance)}',
                 style: Theme.of(context).textTheme.bodyMedium
                     ?.copyWith(color: colors.onSurfaceVariant),
               ),
@@ -763,7 +724,7 @@ class _DailyGlance extends StatelessWidget {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(
-                  'Adjust',
+                  'Change budget',
                   style: const TextStyle(
                     decoration: TextDecoration.underline,
                     decorationColor: _homeIconColor,
