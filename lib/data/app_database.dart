@@ -9,6 +9,21 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
   Database? _database;
 
+  // One column list shared by onCreate and the migrations so the two cannot
+  // drift.
+  static const _purchaseColumns = '''
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    food_item_id INTEGER,
+    item_name TEXT NOT NULL,
+    store TEXT NOT NULL,
+    category TEXT NOT NULL,
+    amount_cents INTEGER NOT NULL CHECK(amount_cents >= 0),
+    servings INTEGER NOT NULL DEFAULT 1 CHECK(servings > 0),
+    purchased_at TEXT NOT NULL,
+    note TEXT NOT NULL DEFAULT '',
+    is_confirmed INTEGER NOT NULL DEFAULT 1 CHECK(is_confirmed IN (0, 1)),
+    FOREIGN KEY(food_item_id) REFERENCES food_items(id) ON DELETE SET NULL''';
+
   Future<Database> get database async {
     if (_database != null) return _database!;
     final databasePath = p.join(await getDatabasesPath(), 'budget_bites.db');
@@ -27,21 +42,7 @@ class AppDatabase {
             created_at TEXT NOT NULL
           )
         ''');
-        await db.execute('''
-          CREATE TABLE purchases (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            food_item_id INTEGER,
-            item_name TEXT NOT NULL,
-            store TEXT NOT NULL,
-            category TEXT NOT NULL,
-            amount_cents INTEGER NOT NULL CHECK(amount_cents >= 0),
-            servings INTEGER NOT NULL DEFAULT 1 CHECK(servings > 0),
-            purchased_at TEXT NOT NULL,
-            note TEXT NOT NULL DEFAULT '',
-            is_confirmed INTEGER NOT NULL DEFAULT 1 CHECK(is_confirmed IN (0, 1)),
-            FOREIGN KEY(food_item_id) REFERENCES food_items(id) ON DELETE SET NULL
-          )
-        ''');
+        await db.execute('CREATE TABLE purchases ($_purchaseColumns)');
         await db.execute(
           'CREATE INDEX purchases_date_index ON purchases(purchased_at)',
         );
