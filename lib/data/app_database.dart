@@ -47,6 +47,9 @@ class AppDatabase {
         await db.execute(
           'CREATE INDEX purchases_date_index ON purchases(purchased_at)',
         );
+        await db.execute(
+          'CREATE INDEX purchases_item_index ON purchases(food_item_id)',
+        );
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -73,6 +76,9 @@ class AppDatabase {
           await db.execute('ALTER TABLE purchases_v3 RENAME TO purchases');
           await db.execute(
             'CREATE INDEX purchases_date_index ON purchases(purchased_at)',
+          );
+          await db.execute(
+            'CREATE INDEX purchases_item_index ON purchases(food_item_id)',
           );
         }
       },
