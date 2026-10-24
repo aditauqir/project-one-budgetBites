@@ -252,6 +252,7 @@ class _AppShellState extends State<AppShell> {
               );
             }
             // rebuild the pages with fresh totals after a save or delete.
+            // hey willow, screens need fresh controller data here after your writes finish.
             final pages = [
               HomeScreen(
                 controller: widget.controller,

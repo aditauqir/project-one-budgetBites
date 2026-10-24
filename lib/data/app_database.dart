@@ -112,6 +112,7 @@ class AppDatabase {
   }
 
   // meal and receipt go together. a failed receipt should not leave half a save.
+  // hey willow, pls keep meal and receipt writes in one transaction if you change this.
   Future<void> saveLinkedPurchase(PurchaseEntry entry) async {
     final db = await database;
     await db.transaction((txn) async {
@@ -152,6 +153,7 @@ class AppDatabase {
   }
 
   // the WHERE check protects real receipts, even if the button is tapped twice.
+  // hey willow, pls keep is_confirmed = 0 here. reset must never wipe a bought meal.
   Future<void> cancelPlan(int id) async {
     await (await database).delete(
       'purchases',

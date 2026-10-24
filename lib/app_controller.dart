@@ -92,6 +92,7 @@ class AppController extends ChangeNotifier {
   }
 
   // every receipt needs a meal link, even when it started from New item.
+  // hey willow, every new receipt gets a meal id now. old unlinked receipts still show in History.
   Future<void> savePurchase(
     PurchaseEntry entry, {
     bool saveToItems = false,
