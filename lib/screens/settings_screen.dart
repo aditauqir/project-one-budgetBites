@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/page_help.dart';
+
 import '../app_controller.dart';
 import '../models.dart';
 import '../widgets/app_widgets.dart';
@@ -19,14 +21,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final TextEditingController _university;
   late final TextEditingController _weekly;
   late final TextEditingController _daily;
-  late final TextEditingController _calories;
-  late final TextEditingController _carbs;
-  late final TextEditingController _protein;
-  late final TextEditingController _fat;
   late final TextEditingController _location;
   late final TextEditingController _place;
   late List<String> _favorites;
-  late bool _notifications;
+  late bool _compactItems;
   bool _saving = false;
   String? _message;
 
@@ -42,20 +40,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _daily = TextEditingController(
       text: _moneyInput(settings.dailyBudgetCents),
     );
-    _calories = TextEditingController(
-      text: settings.calorieGoal?.toString() ?? '',
-    );
-    _carbs = TextEditingController(
-      text: settings.carbGoalGrams?.toString() ?? '',
-    );
-    _protein = TextEditingController(
-      text: settings.proteinGoalGrams?.toString() ?? '',
-    );
-    _fat = TextEditingController(text: settings.fatGoalGrams?.toString() ?? '');
     _location = TextEditingController(text: settings.location);
     _place = TextEditingController();
     _favorites = List.of(settings.favoritePlaces);
-    _notifications = settings.notificationsEnabled;
+    _compactItems = settings.compactSavedItems;
   }
 
   String _moneyInput(int cents) =>
@@ -68,10 +56,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _university,
       _weekly,
       _daily,
-      _calories,
-      _carbs,
-      _protein,
-      _fat,
       _location,
       _place,
     ]) {
@@ -80,244 +64,269 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
+  // just a plain list here, no boxes around each section.
   @override
-  Widget build(BuildContext context) => Form(
-    key: _formKey,
-    child: ListView(
-      padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
-      children: [
-        Text(
-          'Make it yours',
-          style: Theme.of(context).textTheme.headlineSmall
-              ?.copyWith(color: appInk, fontWeight: appHeadingWeight),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Saved on this device for your next visit.',
-          style: TextStyle(color: appMuted),
-        ),
-        const SizedBox(height: 18),
-        const SectionHeading('Profile and campus'),
-        const SizedBox(height: 8),
-        AppCard(
-          child: Column(
-            children: [
-              _textField(_name, 'Your name'),
-              const SizedBox(height: 10),
-              _textField(_university, 'University'),
-              const SizedBox(height: 10),
-              _textField(
-                _location,
-                'Your location',
-                hint: 'Type a campus or neighborhood',
-              ),
-            ],
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final gap = (MediaQuery.sizeOf(context).width * .05).clamp(16.0, 28.0);
+    return Form(
+      key: _formKey,
+      child: ListView(
+        padding: EdgeInsets.all(gap),
+        children: [
+          const PageHeading(
+            title: 'Settings',
+            help: 'Change your name, campus and budget here. Type an amount or move the slider. Daily goes in 25 cent steps. Weekly money left sets the daily limit. Tap Save settings when youre done.',
           ),
-        ),
-        const SizedBox(height: 18),
-        const SectionHeading('Budget'),
-        const SizedBox(height: 8),
-        AppCard(
-          child: Column(
-            children: [
-              _textField(_weekly, 'Weekly food and drink budget', money: true),
-              const SizedBox(height: 10),
-              _textField(_daily, 'Daily budget', money: true),
-              const SizedBox(height: 8),
-              const Text(
-                'The daily suggestion uses confirmed spending and the days remaining in the current week.',
-                style: TextStyle(color: appMuted, fontSize: 12),
-              ),
-            ],
+          SizedBox(height: gap),
+          Text('Profile', style: theme.textTheme.headlineSmall),
+          SizedBox(height: gap),
+          _textField(_name, 'Name'),
+          SizedBox(height: gap),
+          _textField(_university, 'University'),
+          SizedBox(height: gap),
+          _textField(_location, 'Campus'),
+          SizedBox(height: gap * 1.5),
+          Text('Budget', style: theme.textTheme.headlineSmall),
+          SizedBox(height: gap),
+          _budgetControl('Weekly', _weekly, 50000, gap),
+          SizedBox(height: gap),
+          _budgetControl('Daily', _daily, _dailyLimitCents, gap),
+          Text(
+            'Daily limit: ${formatMoney(_dailyLimitCents)} from your remaining weekly budget and days left this week.',
+            style: theme.textTheme.bodySmall,
           ),
-        ),
-        const SizedBox(height: 18),
-        const SectionHeading('Nutrition goals (optional)'),
-        const SizedBox(height: 8),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _textField(_calories, 'Calories per day', integer: true),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _textField(_carbs, 'Carbs · g', integer: true),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _textField(_protein, 'Protein · g', integer: true),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _textField(_fat, 'Fat · g', integer: true),
-              const SizedBox(height: 8),
-              const Text(
-                'Nutrition progress stays uncounted until the item has nutrition data. Budget Bites does not guess it from the name or price.',
-                style: TextStyle(color: appMuted, fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 18),
-        const SectionHeading('Favorite places'),
-        const SizedBox(height: 8),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_favorites.isEmpty)
-                const Text(
-                  'No places saved yet.',
-                  style: TextStyle(color: appMuted),
-                ),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _favorites
-                    .map(
-                      (place) => InputChip(
-                        label: Text(place),
-                        onDeleted: () =>
-                            setState(() => _favorites.remove(place)),
-                      ),
-                    )
-                    .toList(),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _place,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        hintText: 'Add a place',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.filledTonal(
-                    onPressed: _addPlace,
-                    icon: const Icon(AppIcons.add),
-                    tooltip: 'Add favorite place',
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 18),
-        const SectionHeading('Notifications'),
-        const SizedBox(height: 8),
-        AppCard(
-          child: SwitchListTile.adaptive(
+          SizedBox(height: gap),
+          Text('Display', style: theme.textTheme.headlineSmall),
+          SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text(
-              'Enable reminders',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-            subtitle: const Text(
-              'Saves your preference. Reminder scheduling is not connected in this first build.',
-              style: TextStyle(color: appMuted, fontSize: 12),
-            ),
-            value: _notifications,
-            onChanged: (value) => setState(() => _notifications = value),
+            title: const Text('Compact saved items'),
+            subtitle: const Text('Use less space in the list below.'),
+            value: _compactItems,
+            onChanged: (value) => setState(() => _compactItems = value),
           ),
-        ),
-        const SizedBox(height: 18),
-        SectionHeading(
-          'Items',
-          trailing: FilledButton.tonalIcon(
-            onPressed: () => showFoodEditor(context, widget.controller),
-            icon: const Icon(AppIcons.add, size: 18),
-            label: const Text('Add item'),
+          SizedBox(height: gap),
+          Text('Favorite places', style: theme.textTheme.headlineSmall),
+          SizedBox(height: gap / 2),
+          if (_favorites.isEmpty) const Text('No places saved yet.'),
+          Wrap(
+            spacing: gap / 2,
+            children: _favorites
+                .map(
+                  (place) => InputChip(
+                    label: Text(place),
+                    onDeleted: () => setState(() => _favorites.remove(place)),
+                  ),
+                )
+                .toList(),
           ),
-        ),
-        const SizedBox(height: 8),
-        if (widget.controller.foodItems.isEmpty)
-          AppCard(
-            child: EmptyMessage(
-              title: 'No saved items',
-              detail: 'Saved items can be reused from Existing or Menu in Log.',
-            ),
-          )
-        else
-          ...widget.controller.foodItems.map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: AppCard(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _place,
+                  decoration: const InputDecoration(labelText: 'Add a place'),
+                  onSubmitted: (_) => _addPlace(),
                 ),
-                child: Row(
+              ),
+              IconButton(
+                onPressed: _addPlace,
+                icon: const Icon(AppIcons.add),
+                tooltip: 'Add favorite place',
+              ),
+            ],
+          ),
+          SizedBox(height: gap),
+          SectionHeading(
+            'Saved items',
+            trailing: TextButton.icon(
+              onPressed: () => showFoodEditor(context, widget.controller),
+              icon: const Icon(AppIcons.add),
+              label: const Text('Add item'),
+            ),
+          ),
+          if (widget.controller.foodItems.isEmpty)
+            const Text('No saved items yet.')
+          else
+            ...widget.controller.foodItems.map(
+              (item) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: _compactItems,
+                title: Text(item.name),
+                subtitle: Text(
+                  '${item.store} · ${formatMoney(item.lastPriceCents)}',
+                ),
+                onLongPress: () =>
+                    showFoodEditor(context, widget.controller, item: item),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(AppIcons.bookmark, color: appIconColor),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.name,
-                            style: const TextStyle(
-                              fontWeight: appEmphasisWeight,
-                              color: appInk,
-                            ),
-                          ),
-                          Text(
-                            '${item.store} · ${item.category} · ${formatMoney(item.lastPriceCents)}',
-                            style: const TextStyle(
-                              color: appMuted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                     IconButton(
+                      icon: const Icon(AppIcons.edit),
+                      tooltip: 'Edit item',
                       onPressed: () => showFoodEditor(
                         context,
                         widget.controller,
                         item: item,
                       ),
-                      icon: const Icon(AppIcons.edit),
-                      tooltip: 'Edit item',
                     ),
                     IconButton(
-                      onPressed: () => _deleteItem(context, item),
                       icon: const Icon(AppIcons.delete),
                       tooltip: 'Delete item',
+                      onPressed: () => _deleteItem(context, item),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-        if (_message != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            _message!,
-            style: TextStyle(
-              color: _message!.startsWith('Saved') ? appSuccess : appError,
+          if (_message != null) ...[
+            SizedBox(height: gap),
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                _message!,
+                style: TextStyle(
+                  color: _message!.startsWith('Saved') ? appSuccess : appError,
+                ),
+              ),
             ),
-          ),
-        ],
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 52,
-          child: FilledButton.icon(
+          ],
+          SizedBox(height: gap),
+          FilledButton.icon(
             onPressed: _saving ? null : _save,
             icon: const Icon(AppIcons.save),
             label: Text(_saving ? 'Saving...' : 'Save settings'),
           ),
+        ],
+      ),
+    );
+  }
+
+  /*
+   * we split whats left this week across the days left, today counts too.
+   * all this is cents. weekly minus spent, dont go below zero.
+   * divide by days left then round down to 25 cents so slider steps fit.
+   * user can pick less. this is our budget rule, not the Lunch Lens helper.
+   */
+  int get _dailyLimitCents {
+    final weekly = parseMoneyToCents(_weekly.text) ?? 0;
+    final remaining = (weekly - widget.controller.spentThisWeekCents).clamp(
+      0,
+      weekly,
+    );
+    final daysLeft = 8 - DateTime.now().weekday;
+    return (remaining ~/ daysLeft ~/ 25) * 25;
+  }
+
+  Widget _budgetControl(
+    String label,
+    TextEditingController field,
+    int limit,
+    double gap,
+  ) {
+    final isDaily = label == 'Daily';
+    final step = isDaily ? 25 : 100;
+    final storedCents = parseMoneyToCents(field.text) ?? 0;
+    final maxCents = isDaily
+        ? limit
+        : (storedCents > limit ? storedCents : limit);
+    final cents = isDaily
+        ? (storedCents.clamp(0, maxCents) ~/ 25) * 25
+        : storedCents;
+    void update(int value) => setState(() {
+      field.text = _moneyInput(isDaily ? value.clamp(0, maxCents) : value);
+      if (!isDaily) {
+        final daily = parseMoneyToCents(_daily.text) ?? 0;
+        _daily.text = _moneyInput(
+          (daily.clamp(0, _dailyLimitCents) ~/ 25) * 25,
+        );
+      }
+    });
+    return Column(
+      children: [
+        Text(label, style: Theme.of(context).textTheme.titleLarge),
+        SizedBox(height: gap / 2),
+        Row(
+          children: [
+            IconButton.outlined(
+              onPressed: cents >= step ? () => update(cents - step) : null,
+              tooltip:
+                  'Reduce $label budget by ${isDaily ? '25 cents' : 'one dollar'}',
+              icon: const Icon(AppIcons.removeCircle),
+            ),
+            Expanded(
+              child: TextFormField(
+                controller: field,
+                textAlign: TextAlign.center,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: Theme.of(context).textTheme.headlineMedium,
+                decoration: const InputDecoration(
+                  prefixText: r'$ ',
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                ),
+                onChanged: (_) => setState(() {}),
+                validator: (raw) {
+                  final value = parseMoneyToCents(raw ?? '');
+                  if (value == null) return 'Enter a valid amount.';
+                  if (isDaily && value > maxCents) {
+                    return 'Max ${formatMoney(maxCents)}';
+                  }
+                  if (isDaily && value % 25 != 0) return 'Use 0.25 steps.';
+                  return null;
+                },
+              ),
+            ),
+            IconButton.outlined(
+              onPressed: isDaily && cents >= maxCents
+                  ? null
+                  : () => update(cents + step),
+              tooltip:
+                  'Increase $label budget by ${isDaily ? '25 cents' : 'one dollar'}',
+              icon: const Icon(AppIcons.addCircle),
+            ),
+          ],
+        ),
+        // can type it too, daily still needs to fit the week and 25 cent steps.
+        // circle sticks out a bit so its easier to grab.
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: gap,
+            trackShape: const RoundedRectSliderTrackShape(),
+            thumbShape: RoundSliderThumbShape(
+              enabledThumbRadius: gap * .65,
+              elevation: 2,
+              pressedElevation: 4,
+            ),
+            activeTrackColor: appPrimary,
+            inactiveTrackColor: Colors.grey.shade300,
+            thumbColor: appPrimary,
+          ),
+          child: Slider(
+            value: cents.toDouble(),
+            min: 0,
+            max: maxCents.toDouble(),
+            divisions: isDaily && maxCents > 0 ? maxCents ~/ 25 : null,
+            label: formatMoney(cents),
+            semanticFormatterCallback: (value) =>
+                '$label budget ${formatMoney(value.round())}',
+            onChanged: maxCents == 0
+                ? null
+                : (value) => update(
+                    isDaily ? (value / 25).round() * 25 : value.round(),
+                  ),
+          ),
         ),
       ],
-    ),
-  );
+    );
+  }
 
   Widget _textField(
     TextEditingController controller,
@@ -367,24 +376,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    // typed budget or slider, both save the same cents here.
+    // dont save twice while the first write is still going.
+    if (_saving || !_formKey.currentState!.validate()) return;
     setState(() {
       _saving = true;
       _message = null;
     });
     try {
-      final settings = AppSettings(
+      final settings = widget.controller.settings.copyWith(
         name: _name.text.trim(),
         university: _university.text.trim(),
         weeklyBudgetCents: parseMoneyToCents(_weekly.text)!,
-        dailyBudgetCents: parseMoneyToCents(_daily.text)!,
-        calorieGoal: _optionalInt(_calories.text),
-        carbGoalGrams: _optionalInt(_carbs.text),
-        proteinGoalGrams: _optionalInt(_protein.text),
-        fatGoalGrams: _optionalInt(_fat.text),
+        dailyBudgetCents:
+            (parseMoneyToCents(_daily.text)!.clamp(0, _dailyLimitCents) ~/ 25) *
+            25,
         favoritePlaces: _favorites,
         location: _location.text.trim(),
-        notificationsEnabled: _notifications,
+        compactSavedItems: _compactItems,
       );
       await widget.controller.saveSettings(settings);
       if (mounted) {
@@ -403,21 +412,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  int? _optionalInt(String value) =>
-      value.trim().isEmpty ? null : int.parse(value.trim());
-
   Future<void> _deleteItem(BuildContext context, FoodItem item) async {
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete saved item?'),
-        content: const Text(
-          'Past purchase records stay in history, but they will no longer link to this saved item.',
-        ),
+        title: Text('Delete “${item.name}”?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Keep item'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
