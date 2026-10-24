@@ -1,121 +1,309 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
+import 'app_controller.dart';
+import 'screens/activity_screen.dart';
+import 'screens/history_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/log_screen.dart';
+import 'screens/settings_screen.dart';
+import 'widgets/app_widgets.dart';
+
+void main() => runApp(const BudgetBitesApp());
+
+class BudgetBitesApp extends StatefulWidget {
+  const BudgetBitesApp({super.key});
+
+  @override
+  State<BudgetBitesApp> createState() => _BudgetBitesAppState();
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class _BudgetBitesAppState extends State<BudgetBitesApp> {
+  late final AppController _controller;
 
-  // This widget is the root of your application.
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
+  void initState() {
+    super.initState();
+    _controller = AppController()..load();
   }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    title: 'Budget Bites',
+    debugShowCheckedModeBanner: false,
+    theme: ThemeData(
+      useMaterial3: true,
+      fontFamily: 'AktivGrotesk',
+      scaffoldBackgroundColor: appCanvas,
+      colorScheme: ColorScheme.fromSeed(seedColor: appPrimary).copyWith(
+        primary: appPrimary,
+        onPrimary: appInk,
+        primaryContainer: appPrimarySoft,
+        onPrimaryContainer: appInk,
+        secondary: appIconColor,
+        onSecondary: Colors.white,
+        secondaryContainer: appAccentSoft,
+        onSecondaryContainer: appIconColor,
+        tertiary: appIconColor,
+        onTertiary: Colors.white,
+        surface: Colors.white,
+        onSurface: appInk,
+        onSurfaceVariant: appMuted,
+        outline: appBorder,
+        error: appError,
+        onError: Colors.white,
+      ),
+      iconTheme: const IconThemeData(color: appIconColor),
+      primaryIconTheme: const IconThemeData(color: appIconColor),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: appCanvas,
+        surfaceTintColor: Colors.transparent,
+        iconTheme: IconThemeData(color: appIconColor),
+        actionsIconTheme: IconThemeData(color: appIconColor),
+        titleTextStyle: TextStyle(
+          fontFamily: 'AktivGrotesk',
+          color: appInk,
+          fontSize: 21,
+          fontWeight: appHeadingWeight,
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: appPrimary,
+          foregroundColor: appInk,
+          disabledBackgroundColor: appBorder,
+          disabledForegroundColor: appMuted,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: appIconColor,
+          side: const BorderSide(color: appIconColor),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: appIconColor,
+          disabledForegroundColor: appMuted,
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          foregroundColor: appIconColor,
+          disabledForegroundColor: appMuted,
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.white,
+        indicatorColor: appPrimarySoft,
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          return IconThemeData(
+            color: states.contains(WidgetState.selected)
+                ? appIconColor
+                : appMuted,
+          );
+        }),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          return TextStyle(
+            color: states.contains(WidgetState.selected)
+                ? appIconColor
+                : appMuted,
+            fontWeight: states.contains(WidgetState.selected)
+                ? FontWeight.w700
+                : FontWeight.w400,
+          );
+        }),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: Colors.white,
+        selectedColor: appPrimarySoft,
+        checkmarkColor: appIconColor,
+        side: const BorderSide(color: appBorder),
+        labelStyle: const TextStyle(color: appInk),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? appPrimary : null,
+        ),
+        checkColor: const WidgetStatePropertyAll(appInk),
+        side: const BorderSide(color: appBorder),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) ? appIconColor : null,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? appPrimary : null,
+        ),
+        trackOutlineColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) ? appPrimary : appBorder,
+        ),
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: appPrimary,
+        linearTrackColor: appBorder,
+        circularTrackColor: appBorder,
+      ),
+      dividerTheme: const DividerThemeData(color: appBorder),
+      textSelectionTheme: const TextSelectionThemeData(
+        cursorColor: appIconColor,
+        selectionColor: appPrimarySoft,
+        selectionHandleColor: appIconColor,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Colors.white,
+        iconColor: appIconColor,
+        prefixIconColor: appIconColor,
+        suffixIconColor: appIconColor,
+        labelStyle: const TextStyle(color: appMuted),
+        floatingLabelStyle: const TextStyle(color: appIconColor),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: appIconColor, width: 1.5),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: appBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: appBorder),
+        ),
+      ),
+    ),
+    home: AppShell(controller: _controller),
+  );
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class AppShell extends StatefulWidget {
+  const AppShell({super.key, required this.controller});
 
-  void _incrementCounter() {
+  final AppController controller;
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  int _selectedIndex = 0;
+  String? _menuStore;
+
+  void _openMenu(String store) {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _selectedIndex = 2;
+      _menuStore = store;
+    });
+  }
+
+  void _openLog() {
+    setState(() {
+      _selectedIndex = 2;
+      _menuStore = null;
+    });
+  }
+
+  void _openActivity() {
+    setState(() {
+      _selectedIndex = 1;
+      _menuStore = null;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+    final pages = [
+      HomeScreen(
+        controller: widget.controller,
+        onOpenMenu: _openMenu,
+        onOpenLog: _openLog,
+        onOpenActivity: _openActivity,
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+      ActivityScreen(controller: widget.controller),
+      LogScreen(
+        controller: widget.controller,
+        initialStore: _menuStore,
+        onStoreConsumed: () => _menuStore = null,
+      ),
+      HistoryScreen(controller: widget.controller),
+      SettingsScreen(controller: widget.controller),
+    ];
+
+    return Scaffold(
+      body: SafeArea(
+        child: AnimatedBuilder(
+          animation: widget.controller,
+          builder: (context, _) {
+            if (widget.controller.isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (widget.controller.loadError != null) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(AppIcons.cloudOff, size: 42),
+                      const SizedBox(height: 12),
+                      Text(
+                        widget.controller.loadError!,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton(
+                        onPressed: widget.controller.load,
+                        child: const Text('Try again'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+            return IndexedStack(index: _selectedIndex, children: pages);
+          },
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+      bottomNavigationBar: NavigationBar(
+        backgroundColor: Colors.white,
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) =>
+            setState(() => _selectedIndex = index),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(AppIcons.home),
+            selectedIcon: Icon(AppIcons.home),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(AppIcons.activity),
+            selectedIcon: Icon(AppIcons.activity),
+            label: 'Activity',
+          ),
+          NavigationDestination(
+            icon: Icon(AppIcons.addCircle),
+            selectedIcon: Icon(AppIcons.addCircle),
+            label: 'Log',
+          ),
+          NavigationDestination(
+            icon: Icon(AppIcons.history),
+            selectedIcon: Icon(AppIcons.history),
+            label: 'History',
+          ),
+          NavigationDestination(
+            icon: Icon(AppIcons.settings),
+            selectedIcon: Icon(AppIcons.settings),
+            label: 'Settings',
+          ),
+        ],
       ),
     );
   }
