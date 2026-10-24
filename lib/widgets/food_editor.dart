@@ -30,6 +30,7 @@ class _FoodEditorDialogState extends State<FoodEditorDialog> {
   late final TextEditingController _store;
   late final TextEditingController _price;
   String? _error;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -51,7 +52,9 @@ class _FoodEditorDialogState extends State<FoodEditorDialog> {
     super.dispose();
   }
 
+  // validate the meal, then keep Save locked until its done.
   Future<void> _save() async {
+    if (_saving) return;
     final name = _name.text.trim();
     final store = _store.text.trim();
     final price = parseMoneyToCents(_price.text);
@@ -59,6 +62,10 @@ class _FoodEditorDialogState extends State<FoodEditorDialog> {
       setState(() => _error = 'Add an item, store, and valid price.');
       return;
     }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
     try {
       await widget.controller.saveFoodItem(
         id: widget.item?.id,
@@ -68,13 +75,18 @@ class _FoodEditorDialogState extends State<FoodEditorDialog> {
       );
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
-      if (mounted) setState(() => _error = 'Could not save this item.');
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = 'Couldn’t save this meal. Please try again.';
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: Text(widget.item == null ? 'Add saved item' : 'Edit saved item'),
+    title: Text(widget.item == null ? 'Add meal' : 'Edit meal'),
     content: SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -94,7 +106,7 @@ class _FoodEditorDialogState extends State<FoodEditorDialog> {
             controller: _price,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
-              labelText: 'Last price',
+              labelText: 'Estimated price',
               prefixText: r'$ ',
             ),
           ),
@@ -115,10 +127,13 @@ class _FoodEditorDialogState extends State<FoodEditorDialog> {
     ),
     actions: [
       TextButton(
-        onPressed: () => Navigator.of(context).pop(),
+        onPressed: _saving ? null : () => Navigator.of(context).pop(),
         child: const Text('Cancel'),
       ),
-      FilledButton(onPressed: _save, child: const Text('Save item')),
+      FilledButton(
+        onPressed: _saving ? null : _save,
+        child: Text(_saving ? 'Saving...' : 'Save meal'),
+      ),
     ],
   );
 }

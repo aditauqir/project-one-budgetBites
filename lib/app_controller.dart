@@ -91,30 +91,28 @@ class AppController extends ChangeNotifier {
     await refresh();
   }
 
+  // every receipt needs a meal link, even when it started from New item.
   Future<void> savePurchase(
     PurchaseEntry entry, {
     bool saveToItems = false,
   }) async {
-    var itemId = entry.foodItemId;
-    if (saveToItems || (entry.isConfirmed && itemId != null)) {
-      final item = await saveFoodItem(
-        id: itemId,
-        name: entry.itemName,
-        store: entry.store,
-        priceCents: entry.amountCents,
-      );
-      itemId = item.id;
+    if (entry.amountCents < 0 ||
+        entry.itemName.trim().isEmpty ||
+        entry.store.trim().isEmpty ||
+        entry.servings < 1) {
+      throw ArgumentError('Invalid purchase');
     }
-
-    final savedEntry = entry.copyWith(
-      foodItemId: itemId,
-      category: inferCategory(entry.itemName),
+    // actual receipt price does not overwrite the saved meal estimate.
+    await _database.saveLinkedPurchase(
+      entry.copyWith(category: inferCategory(entry.itemName)),
     );
-    if (entry.id == null) {
-      await _database.insertPurchase(savedEntry);
-    } else {
-      await _database.updatePurchase(savedEntry);
-    }
+    await refresh();
+  }
+
+  // a confirmed purchase cannot be reset as if it never happened.
+  Future<void> cancelPlan(PurchaseEntry entry) async {
+    if (entry.id == null || entry.isConfirmed) return;
+    await _database.cancelPlan(entry.id!);
     await refresh();
   }
 

@@ -65,6 +65,7 @@ flutter:
 
   assets:
     - assets/icons/bowl-food.svg
+    - assets/icons/question-mark.svg
     - assets/icons/clock.svg
     - assets/icons/storefront.svg
     - assets/images/saxbys-placeholder.png
