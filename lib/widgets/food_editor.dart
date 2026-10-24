@@ -137,3 +137,67 @@ class _FoodEditorDialogState extends State<FoodEditorDialog> {
     ],
   );
 }
+
+/// Restriction policy for meal deletes, shared by every entry point so Home,
+/// Log, and Settings cannot disagree. A meal with receipts is blocked until
+/// the user clears those receipts; nothing is ever deleted implicitly.
+Future<bool> confirmDeleteMeal(
+  BuildContext context,
+  AppController controller,
+  FoodItem item,
+) async {
+  final linked = controller.linkedPurchaseCount(item.id ?? -1);
+  if (linked > 0) {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Meal still has receipts'),
+        content: Text(
+          '“${item.name}” has $linked saved purchase${linked == 1 ? '' : 's'}. '
+          'Correct or delete those receipts in History first, then delete the '
+          'meal. Your spending history is never removed for you.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+    return false;
+  }
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('Delete “${item.name}”?'),
+      content: const Text('This removes the saved meal only. It has no receipts.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return false;
+  try {
+    await controller.deleteFoodItem(item);
+    return true;
+  } on MealInUseException catch (error) {
+    if (!context.mounted) return false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Could not delete: ${error.purchaseCount} receipt'
+          '${error.purchaseCount == 1 ? '' : 's'} still use this meal.',
+        ),
+      ),
+    );
+    return false;
+  }
+}
