@@ -29,8 +29,9 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final spent = controller.spentThisWeekCents;
-    final budget = controller.settings.weeklyBudgetCents;
+    // big amount is for today, weekly money stays under the bar.
+    final spent = controller.spentTodayCents;
+    final budget = controller.settings.dailyBudgetCents;
     final remaining = budget - spent;
     final ratio = budget <= 0 ? 0.0 : (spent / budget).clamp(0.0, 1.0);
     final places = controller.settings.favoritePlaces;
@@ -102,7 +103,7 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         Text(
-          'of ${_budgetDisplay(budget)}',
+          'of ${_budgetDisplay(budget)} today',
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.titleLarge
               ?.copyWith(color: appInk, fontWeight: FontWeight.w400),
@@ -119,6 +120,17 @@ class HomeScreen extends StatelessWidget {
                 : spent >= budget * .8
                 ? appWarning
                 : _homePrimary,
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.only(
+            top: (MediaQuery.sizeOf(context).width * .02).clamp(6.0, 12.0),
+          ),
+          child: Text(
+            '${formatMoney(controller.remainingWeekCents)} / ${formatMoney(controller.settings.weeklyBudgetCents)} weekly budget left',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: appMuted),
           ),
         ),
         const SizedBox(height: 12),
