@@ -94,4 +94,75 @@ void main() {
       expect(estimate!.cents, 100);
     });
   });
+
+  group('exclusions', () {
+    test('ignores other meals, unconfirmed plans, and future receipts', () {
+      final estimate = estimateLunch(
+        [
+          receipt(450, id: 1, at: DateTime(2026, 10, 21)),
+          receipt(600, id: 2, at: DateTime(2026, 10, 22)),
+          // Only two valid rows for meal 1: the rest must not count.
+          receipt(900, id: 3, at: DateTime(2026, 10, 23), mealId: 2),
+          receipt(900, id: 4, at: DateTime(2026, 10, 23), confirmed: false),
+          receipt(900, id: 5, at: DateTime(2026, 10, 26)),
+        ],
+        mealId: 1,
+        before: now,
+      );
+
+      expect(estimate, isNull);
+    });
+
+    test('uses only the three most recent earlier receipts', () {
+      final estimate = estimateLunch(
+        [
+          receipt(100, id: 1, at: DateTime(2026, 10, 19)),
+          receipt(200, id: 2, at: DateTime(2026, 10, 20)),
+          receipt(300, id: 3, at: DateTime(2026, 10, 21)),
+          receipt(400, id: 4, at: DateTime(2026, 10, 22)),
+          receipt(500, id: 5, at: DateTime(2026, 10, 23)),
+        ],
+        mealId: 1,
+        before: now,
+      );
+
+      expect(estimate!.inputs.map((e) => e.amountCents), [500, 400, 300]);
+      expect(estimate.cents, 400);
+    });
+
+    test('breaks tied timestamps by receipt id, newest id first', () {
+      final tied = DateTime(2026, 10, 23);
+      final estimate = estimateLunch(
+        [
+          receipt(100, id: 1, at: tied),
+          receipt(400, id: 2, at: tied),
+          receipt(700, id: 3, at: tied),
+          receipt(1000, id: 4, at: DateTime(2026, 10, 24)),
+        ],
+        mealId: 1,
+        before: now,
+      );
+
+      // 1000, then 700, then 400 -> 2100 / 3
+      expect(estimate!.inputs.map((e) => e.amountCents), [1000, 700, 400]);
+      expect(estimate.cents, 700);
+    });
+
+    test('editing a receipt leaves that receipt out of its own estimate', () {
+      final estimate = estimateLunch(
+        [
+          receipt(400, id: 1, at: DateTime(2026, 10, 20)),
+          receipt(450, id: 2, at: DateTime(2026, 10, 21)),
+          receipt(600, id: 3, at: DateTime(2026, 10, 22)),
+          receipt(750, id: 4, at: DateTime(2026, 10, 23)),
+        ],
+        mealId: 1,
+        before: DateTime(2026, 10, 23),
+        editingId: 4,
+      );
+
+      expect(estimate!.inputs.map((e) => e.amountCents), [600, 450, 400]);
+      expect(estimate.cents, 483);
+    });
+  });
 }
