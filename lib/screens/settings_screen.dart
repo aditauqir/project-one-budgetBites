@@ -411,14 +411,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete saved item?'),
-        content: const Text(
-          'Past purchase records stay in history, but they will no longer link to this saved item.',
-        ),
+        title: Text('Delete “${item.name}”?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Keep item'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
