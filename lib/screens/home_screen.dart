@@ -237,18 +237,32 @@ class _HomeScreenState extends State<HomeScreen> {
             )
           else
             ...visibleMeals.map(
-            (meal) => ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(meal.name),
-              subtitle: Text(
-                '${meal.store} · ${meal.category} · Estimated ${formatMoney(meal.lastPriceCents)}',
+              (meal) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(meal.name),
+                subtitle: Text(
+                  '${meal.store} · ${meal.category} · Estimated ${formatMoney(meal.lastPriceCents)}',
+                ),
+                // Visible menu is the button alternative to long-press.
+                trailing: PopupMenuButton<String>(
+                  tooltip: 'Meal options',
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      showFoodEditor(context, controller, item: meal);
+                    } else {
+                      confirmDeleteMeal(context, controller, meal);
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit meal')),
+                    PopupMenuItem(value: 'delete', child: Text('Delete meal')),
+                  ],
+                ),
+                onTap: () => showMealDetails(context, controller, meal),
+                onLongPress: () =>
+                    showFoodEditor(context, controller, item: meal),
               ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => showMealDetails(context, controller, meal),
-              onLongPress: () =>
-                  showFoodEditor(context, controller, item: meal),
             ),
-          ),
         ],
         const SizedBox(height: 34),
         Row(
