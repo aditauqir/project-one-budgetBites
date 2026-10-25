@@ -257,9 +257,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decimal: true,
                 ),
                 style: Theme.of(context).textTheme.headlineMedium,
-                decoration: InputDecoration(
-                  labelText: '$label budget',
+                decoration: const InputDecoration(
                   prefixText: r'$ ',
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
                 ),
                 onChanged: (_) => setState(() {}),
                 validator: (raw) {
