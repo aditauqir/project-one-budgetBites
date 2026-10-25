@@ -148,6 +148,7 @@ class _PurchaseEditorState extends State<PurchaseEditor> {
   }
 
   // check the fields first, then lock Save until this one write is finished.
+  // hey willow, keep the same id when a plan becomes a receipt. dont insert another one.
   Future<void> _save() async {
     if (_saving) return;
     final name = _nameController.text.trim();

@@ -44,6 +44,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         )
         .toList();
     // add the same rows we show, so the number matches the list.
+    // hey willow, if totals move into the data layer, use these same period and category filters.
     final periodTotal = history.fold(
       0,
       (sum, entry) => sum + entry.amountCents,

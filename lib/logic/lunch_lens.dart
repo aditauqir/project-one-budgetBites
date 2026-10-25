@@ -9,6 +9,7 @@ class LunchEstimate {
 }
 
 // only earlier receipts for this meal. dont let a receipt predict itself.
+// hey willow, UI expects null with less than 3 valid receipts. keep the id tie-break too.
 LunchEstimate? estimateLunch(
   Iterable<PurchaseEntry> purchases, {
   required int? mealId,
