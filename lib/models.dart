@@ -132,6 +132,7 @@ class PurchaseEntry {
 
 class AppSettings {
   const AppSettings({
+    this.compactSavedItems = false,
     this.name = 'Adi',
     this.university = 'Georgia State University',
     this.weeklyBudgetCents = 10000,
@@ -151,6 +152,7 @@ class AppSettings {
   });
 
   final String name;
+  final bool compactSavedItems;
   final String university;
   final int weeklyBudgetCents;
   final int dailyBudgetCents;
@@ -164,6 +166,7 @@ class AppSettings {
 
   AppSettings copyWith({
     String? name,
+    bool? compactSavedItems,
     String? university,
     int? weeklyBudgetCents,
     int? dailyBudgetCents,
@@ -177,6 +180,7 @@ class AppSettings {
   }) {
     return AppSettings(
       name: name ?? this.name,
+      compactSavedItems: compactSavedItems ?? this.compactSavedItems,
       university: university ?? this.university,
       weeklyBudgetCents: weeklyBudgetCents ?? this.weeklyBudgetCents,
       dailyBudgetCents: dailyBudgetCents ?? this.dailyBudgetCents,
