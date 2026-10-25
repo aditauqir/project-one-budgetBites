@@ -219,7 +219,24 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          ...visibleMeals.map(
+          if (visibleMeals.isEmpty)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'No meals in $selectedCuisine yet.',
+                    style: Theme.of(context).textTheme.bodyMedium
+                        ?.copyWith(color: appMuted),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => setState(() => _cuisine = 'All'),
+                  child: const Text('Show all meals'),
+                ),
+              ],
+            )
+          else
+            ...visibleMeals.map(
             (meal) => ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(meal.name),
