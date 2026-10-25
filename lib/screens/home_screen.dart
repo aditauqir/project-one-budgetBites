@@ -35,12 +35,30 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // 'All' shows the whole catalog. Any other value is one cuisine in the
+  // saved meals, so the list and the chips always agree.
+  String _cuisine = 'All';
+
   @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
     final onOpenMenu = widget.onOpenMenu;
     final onOpenLog = widget.onOpenLog;
     final onOpenSettings = widget.onOpenSettings;
+    final cuisines = <String>{
+      for (final meal in controller.foodItems) meal.category,
+    }.toList()..sort();
+    // Fall back to All if the chosen cuisine disappears (last meal deleted).
+    final selectedCuisine = cuisines.contains(_cuisine) ? _cuisine : 'All';
+    final cuisineCounts = <String, int>{};
+    for (final meal in controller.foodItems) {
+      cuisineCounts.update(meal.category, (count) => count + 1, ifAbsent: () => 1);
+    }
+    final visibleMeals = selectedCuisine == 'All'
+        ? controller.foodItems
+        : controller.foodItems
+              .where((meal) => meal.category == selectedCuisine)
+              .toList();
     // big amount is for today, weekly money stays under the bar.
     final spent = controller.spentTodayCents;
     final budget = controller.settings.dailyBudgetCents;
@@ -180,13 +198,33 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         if (controller.foodItems.isEmpty)
           const Text('Save a meal to plan it or log a purchase.')
-        else
-          ...controller.foodItems.map(
+        else ...[
+          // Cuisine filter for the catalog. Counts come from the saved meals,
+          // so an empty cuisine never appears as a dead chip.
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: Text('All (${controller.foodItems.length})'),
+                selected: selectedCuisine == 'All',
+                onSelected: (_) => setState(() => _cuisine = 'All'),
+              ),
+              for (final cuisine in cuisines)
+                ChoiceChip(
+                  label: Text('$cuisine (${cuisineCounts[cuisine]})'),
+                  selected: selectedCuisine == cuisine,
+                  onSelected: (_) => setState(() => _cuisine = cuisine),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...visibleMeals.map(
             (meal) => ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(meal.name),
               subtitle: Text(
-                '${meal.store} · Estimated ${formatMoney(meal.lastPriceCents)}',
+                '${meal.store} · ${meal.category} · Estimated ${formatMoney(meal.lastPriceCents)}',
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => showMealDetails(context, controller, meal),
@@ -194,6 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   showFoodEditor(context, controller, item: meal),
             ),
           ),
+        ],
         const SizedBox(height: 34),
         Row(
           children: [
