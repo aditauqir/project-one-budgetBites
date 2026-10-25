@@ -220,23 +220,6 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      HomeScreen(
-        controller: widget.controller,
-        onOpenMenu: _openMenu,
-        onOpenLog: _openLog,
-        onOpenActivity: _openActivity,
-      ),
-      ActivityScreen(controller: widget.controller),
-      LogScreen(
-        controller: widget.controller,
-        initialStore: _menuStore,
-        onStoreConsumed: () => _menuStore = null,
-      ),
-      HistoryScreen(controller: widget.controller),
-      SettingsScreen(controller: widget.controller),
-    ];
-
     return Scaffold(
       body: SafeArea(
         child: AnimatedBuilder(
@@ -268,6 +251,23 @@ class _AppShellState extends State<AppShell> {
                 ),
               );
             }
+            // rebuild the pages with fresh totals after a save or delete.
+            final pages = [
+              HomeScreen(
+                controller: widget.controller,
+                onOpenMenu: _openMenu,
+                onOpenLog: _openLog,
+                onOpenActivity: _openActivity,
+              ),
+              ActivityScreen(controller: widget.controller),
+              LogScreen(
+                controller: widget.controller,
+                initialStore: _menuStore,
+                onStoreConsumed: () => _menuStore = null,
+              ),
+              HistoryScreen(controller: widget.controller),
+              SettingsScreen(controller: widget.controller),
+            ];
             return IndexedStack(index: _selectedIndex, children: pages);
           },
         ),

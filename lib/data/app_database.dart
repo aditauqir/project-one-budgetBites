@@ -111,6 +111,55 @@ class AppDatabase {
     );
   }
 
+  // meal and receipt go together. a failed receipt should not leave half a save.
+  Future<void> saveLinkedPurchase(PurchaseEntry entry) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      var mealId = entry.foodItemId;
+      // find the saved meal first. only create one if it is actually new.
+      if (mealId == null) {
+        final existing = await txn.query(
+          'food_items',
+          where: 'name = ? COLLATE NOCASE AND store = ? COLLATE NOCASE',
+          whereArgs: [entry.itemName.trim(), entry.store.trim()],
+          limit: 1,
+        );
+        mealId = existing.isNotEmpty
+            ? existing.first['id'] as int
+            : await txn.insert('food_items', {
+                'name': entry.itemName.trim(),
+                'store': entry.store.trim(),
+                'category': entry.category,
+                'last_price_cents': entry.amountCents,
+                'created_at': DateTime.now().toIso8601String(),
+              });
+      }
+      // store the paid price on this receipt, leave the meal estimate alone.
+      final values = entry.copyWith(foodItemId: mealId).toMap()..remove('id');
+      // no id means new plan or receipt. with an id we update the existing row.
+      if (entry.id == null) {
+        await txn.insert('purchases', values);
+      } else {
+        final count = await txn.update(
+          'purchases',
+          values,
+          where: 'id = ?',
+          whereArgs: [entry.id],
+        );
+        if (count != 1) throw StateError('Purchase no longer exists');
+      }
+    });
+  }
+
+  // the WHERE check protects real receipts, even if the button is tapped twice.
+  Future<void> cancelPlan(int id) async {
+    await (await database).delete(
+      'purchases',
+      where: 'id = ? AND is_confirmed = 0',
+      whereArgs: [id],
+    );
+  }
+
   Future<int> deletePurchase(int id) async {
     return (await database).delete(
       'purchases',

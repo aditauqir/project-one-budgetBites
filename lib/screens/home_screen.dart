@@ -1,9 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import '../widgets/page_help.dart';
+
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app_controller.dart';
+import 'meal_detail_screen.dart';
+import '../widgets/food_editor.dart';
 import '../data/azalea_menu.dart';
 import '../data/blossom_tree.dart';
 import '../data/brickstone_menu.dart';
@@ -91,6 +96,13 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
+        const Align(
+          alignment: Alignment.centerRight,
+          child: PageHelp(
+            title: 'Home',
+            message: 'The big number is what you have left today. Weekly money is under the bar. Tap a saved meal to plan it, or Log purchase if you already bought something.',
+          ),
+        ),
         const SizedBox(height: 30),
         Text(
           _budgetDisplay(remaining),
@@ -154,6 +166,34 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ),
+        SizedBox(
+          height: (MediaQuery.sizeOf(context).width * .05).clamp(16.0, 28.0),
+        ),
+        // saved meals open their details, then the user can plan or log one.
+        SectionHeading(
+          'Your meals',
+          trailing: TextButton.icon(
+            onPressed: () => showFoodEditor(context, controller),
+            icon: const Icon(Icons.add),
+            label: const Text('Add meal'),
+          ),
+        ),
+        if (controller.foodItems.isEmpty)
+          const Text('Save a meal to plan it or log a purchase.')
+        else
+          ...controller.foodItems.map(
+            (meal) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(meal.name),
+              subtitle: Text(
+                '${meal.store} · Estimated ${formatMoney(meal.lastPriceCents)}',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showMealDetails(context, controller, meal),
+              onLongPress: () =>
+                  showFoodEditor(context, controller, item: meal),
+            ),
+          ),
         const SizedBox(height: 34),
         Row(
           children: [

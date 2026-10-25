@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/page_help.dart';
+
 import '../app_controller.dart';
 import '../models.dart';
 import '../widgets/app_widgets.dart';
@@ -72,7 +74,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: ListView(
         padding: EdgeInsets.all(gap),
         children: [
-          Text('Settings', style: theme.textTheme.headlineLarge),
+          const PageHeading(
+            title: 'Settings',
+            help: 'Change your name, campus and budget here. Type an amount or move the slider. Daily goes in 25 cent steps. Weekly money left sets the daily limit. Tap Save settings when youre done.',
+          ),
           SizedBox(height: gap),
           Text('Profile', style: theme.textTheme.headlineSmall),
           SizedBox(height: gap),
