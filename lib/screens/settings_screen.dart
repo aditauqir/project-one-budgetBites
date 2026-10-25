@@ -84,9 +84,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SizedBox(height: gap * 1.5),
           Text('Budget', style: theme.textTheme.headlineSmall),
           SizedBox(height: gap),
-          _budgetControl('Daily', _daily, 10000, gap),
-          SizedBox(height: gap),
           _budgetControl('Weekly', _weekly, 50000, gap),
+          SizedBox(height: gap),
+          _budgetControl('Daily', _daily, _dailyLimitCents, gap),
+          Text(
+            'Daily limit: ${formatMoney(_dailyLimitCents)} from your remaining weekly budget and days left this week.',
+            style: theme.textTheme.bodySmall,
+          ),
           SizedBox(height: gap),
           Text('Display', style: theme.textTheme.headlineSmall),
           SwitchListTile(
@@ -193,16 +197,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /*
+   * we split whats left this week across the days left, today counts too.
+   * all this is cents. weekly minus spent, dont go below zero.
+   * divide by days left then round down to 25 cents so slider steps fit.
+   * user can pick less. this is our budget rule, not the Lunch Lens helper.
+   */
+  int get _dailyLimitCents {
+    final weekly = parseMoneyToCents(_weekly.text) ?? 0;
+    final remaining = (weekly - widget.controller.spentThisWeekCents).clamp(
+      0,
+      weekly,
+    );
+    final daysLeft = 8 - DateTime.now().weekday;
+    return (remaining ~/ daysLeft ~/ 25) * 25;
+  }
+
   Widget _budgetControl(
     String label,
     TextEditingController field,
     int limit,
     double gap,
   ) {
-    final cents = parseMoneyToCents(field.text) ?? 0;
-    // keep big old budgets too, the slider should not cut them off.
-    final maxCents = cents > limit ? cents : limit;
-    void update(int value) => setState(() => field.text = _moneyInput(value));
+    final isDaily = label == 'Daily';
+    final step = isDaily ? 25 : 100;
+    final storedCents = parseMoneyToCents(field.text) ?? 0;
+    final maxCents = isDaily
+        ? limit
+        : (storedCents > limit ? storedCents : limit);
+    final cents = isDaily
+        ? (storedCents.clamp(0, maxCents) ~/ 25) * 25
+        : storedCents;
+    void update(int value) => setState(() {
+      field.text = _moneyInput(isDaily ? value.clamp(0, maxCents) : value);
+      if (!isDaily) {
+        final daily = parseMoneyToCents(_daily.text) ?? 0;
+        _daily.text = _moneyInput(
+          (daily.clamp(0, _dailyLimitCents) ~/ 25) * 25,
+        );
+      }
+    });
     return Column(
       children: [
         Text(label, style: Theme.of(context).textTheme.titleLarge),
@@ -210,27 +244,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Row(
           children: [
             IconButton.outlined(
-              onPressed: cents >= 100 ? () => update(cents - 100) : null,
-              tooltip: 'Reduce $label budget by one dollar',
+              onPressed: cents >= step ? () => update(cents - step) : null,
+              tooltip:
+                  'Reduce $label budget by ${isDaily ? '25 cents' : 'one dollar'}',
               icon: const Icon(AppIcons.removeCircle),
             ),
             Expanded(
-              child: Text(
-                formatMoney(cents),
+              child: TextFormField(
+                controller: field,
                 textAlign: TextAlign.center,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 style: Theme.of(context).textTheme.headlineMedium,
+                decoration: InputDecoration(
+                  labelText: '$label budget',
+                  prefixText: r'$ ',
+                ),
+                onChanged: (_) => setState(() {}),
+                validator: (raw) {
+                  final value = parseMoneyToCents(raw ?? '');
+                  if (value == null) return 'Enter a valid amount.';
+                  if (isDaily && value > maxCents) {
+                    return 'Max ${formatMoney(maxCents)}';
+                  }
+                  if (isDaily && value % 25 != 0) return 'Use 0.25 steps.';
+                  return null;
+                },
               ),
             ),
             IconButton.outlined(
-              onPressed: () => update(cents + 100),
-              tooltip: 'Increase $label budget by one dollar',
+              onPressed: isDaily && cents >= maxCents
+                  ? null
+                  : () => update(cents + step),
+              tooltip:
+                  'Increase $label budget by ${isDaily ? '25 cents' : 'one dollar'}',
               icon: const Icon(AppIcons.addCircle),
             ),
           ],
         ),
-        // yellow up to the circle, gray after it.
+        // can type it too, daily still needs to fit the week and 25 cent steps.
+        // circle sticks out a bit so its easier to grab.
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
+            trackHeight: gap,
+            trackShape: const RoundedRectSliderTrackShape(),
+            thumbShape: RoundSliderThumbShape(
+              enabledThumbRadius: gap * .65,
+              elevation: 2,
+              pressedElevation: 4,
+            ),
             activeTrackColor: appPrimary,
             inactiveTrackColor: Colors.grey.shade300,
             thumbColor: appPrimary,
@@ -239,10 +302,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: cents.toDouble(),
             min: 0,
             max: maxCents.toDouble(),
+            divisions: isDaily && maxCents > 0 ? maxCents ~/ 25 : null,
             label: formatMoney(cents),
             semanticFormatterCallback: (value) =>
                 '$label budget ${formatMoney(value.round())}',
-            onChanged: (value) => update(value.round()),
+            onChanged: maxCents == 0
+                ? null
+                : (value) => update(
+                    isDaily ? (value / 25).round() * 25 : value.round(),
+                  ),
           ),
         ),
       ],
@@ -297,6 +365,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _save() async {
+    // typed budget or slider, both save the same cents here.
     // dont save twice while the first write is still going.
     if (_saving || !_formKey.currentState!.validate()) return;
     setState(() {
@@ -308,7 +377,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         name: _name.text.trim(),
         university: _university.text.trim(),
         weeklyBudgetCents: parseMoneyToCents(_weekly.text)!,
-        dailyBudgetCents: parseMoneyToCents(_daily.text)!,
+        dailyBudgetCents:
+            (parseMoneyToCents(_daily.text)!.clamp(0, _dailyLimitCents) ~/ 25) *
+            25,
         favoritePlaces: _favorites,
         location: _location.text.trim(),
         compactSavedItems: _compactItems,
