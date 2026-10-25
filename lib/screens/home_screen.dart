@@ -16,7 +16,7 @@ import '../widgets/app_widgets.dart';
 const _homePrimary = appPrimary;
 const _homeIconColor = appIconColor;
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     required this.controller,
@@ -31,7 +31,16 @@ class HomeScreen extends StatelessWidget {
   final VoidCallback onOpenSettings;
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
   Widget build(BuildContext context) {
+    final controller = widget.controller;
+    final onOpenMenu = widget.onOpenMenu;
+    final onOpenLog = widget.onOpenLog;
+    final onOpenSettings = widget.onOpenSettings;
     // big amount is for today, weekly money stays under the bar.
     final spent = controller.spentTodayCents;
     final budget = controller.settings.dailyBudgetCents;
