@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_controller.dart';
+import '../config.dart';
 import '../models.dart';
 import 'app_widgets.dart';
 import 'lunch_lens.dart';
@@ -183,6 +184,9 @@ class _PurchaseEditorState extends State<PurchaseEditor> {
       _error = null;
     });
     try {
+      // Demo hook for the double-receipt check (see lib/config.dart). The
+      // button above is already disabled, so a second tap is ignored.
+      if (simulateSlowSave) await Future<void>.delayed(slowSaveDelay);
       final old = widget.purchase;
       await widget.controller.savePurchase(
         PurchaseEntry(
