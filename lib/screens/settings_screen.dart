@@ -413,22 +413,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _deleteItem(BuildContext context, FoodItem item) async {
-    final accepted = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Delete “${item.name}”?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (accepted == true) await widget.controller.deleteFoodItem(item);
+    await confirmDeleteMeal(context, widget.controller, item);
   }
 }

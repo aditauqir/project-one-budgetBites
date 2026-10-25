@@ -426,23 +426,7 @@ class _LogScreenState extends State<LogScreen> {
   }
 
   Future<void> _deleteFoodItem(BuildContext context, FoodItem item) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Delete “${item.name}”?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) await widget.controller.deleteFoodItem(item);
+    await confirmDeleteMeal(context, widget.controller, item);
   }
 }
 
