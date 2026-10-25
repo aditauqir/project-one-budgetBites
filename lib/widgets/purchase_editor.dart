@@ -204,9 +204,13 @@ class _PurchaseEditorState extends State<PurchaseEditor> {
         ),
       );
       if (mounted) {
+        // Grab the messenger before popping. After pop this widget can be
+        // deactivated, and looking up an ancestor then throws.
+        final messenger = ScaffoldMessenger.of(context);
+        final navigator = Navigator.of(context);
         setState(() => _saving = false);
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
+        navigator.pop();
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
               isPlan ? 'Meal planned. Find it in Activity.' : 'Purchase saved.',
