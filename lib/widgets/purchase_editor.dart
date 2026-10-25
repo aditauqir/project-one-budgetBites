@@ -12,7 +12,6 @@ Future<void> showPurchaseEditor(
   PurchaseEntry? purchase,
   bool plannedOnly = false,
   bool confirmPurchase = false,
-  bool saveToItems = false,
   String? initialNote,
   int? initialServings,
 }) {
@@ -30,7 +29,6 @@ Future<void> showPurchaseEditor(
       purchase: purchase,
       plannedOnly: plannedOnly,
       confirmPurchase: confirmPurchase,
-      saveToItems: saveToItems,
       initialNote: initialNote,
       initialServings: initialServings,
     ),
@@ -45,7 +43,6 @@ class PurchaseEditor extends StatefulWidget {
     this.purchase,
     this.plannedOnly = false,
     this.confirmPurchase = false,
-    this.saveToItems = false,
     this.initialNote,
     this.initialServings,
   });
@@ -55,7 +52,6 @@ class PurchaseEditor extends StatefulWidget {
   final PurchaseEntry? purchase;
   final bool plannedOnly;
   final bool confirmPurchase;
-  final bool saveToItems;
   final String? initialNote;
   final int? initialServings;
 
@@ -206,7 +202,6 @@ class _PurchaseEditorState extends State<PurchaseEditor> {
               ? false
               : old?.isConfirmed ?? true,
         ),
-        saveToItems: widget.saveToItems,
       );
       if (mounted) {
         setState(() => _saving = false);

@@ -96,8 +96,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ),
         SizedBox(height: gap),
         TextButton.icon(
-          onPressed: () =>
-              showPurchaseEditor(context, controller, saveToItems: true),
+          onPressed: () => showPurchaseEditor(context, controller),
           icon: const Icon(Icons.add),
           label: const Text('Add purchase'),
         ),

@@ -171,7 +171,6 @@ class _LogScreenState extends State<LogScreen> {
                     onPressed: () => showPurchaseEditor(
                       context,
                       widget.controller,
-                      saveToItems: true,
                     ),
                     icon: const Icon(AppIcons.add),
                     label: const Text('Enter new purchase'),
