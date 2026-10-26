@@ -76,7 +76,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           const PageHeading(
             title: 'Settings',
-            help: 'Change your name, campus and budget here. Type an amount or move the slider. Daily goes in 25 cent steps. Weekly money left sets the daily limit. Tap Save settings when youre done.',
+            help: 'Set your name, campus and budgets here. Type an amount or use the sliders. Daily moves by 25 cents at a time. Save when youre done.',
           ),
           SizedBox(height: gap),
           Text('Profile', style: theme.textTheme.headlineSmall),
@@ -93,7 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SizedBox(height: gap),
           _budgetControl('Daily', _daily, _dailyLimitCents, gap),
           Text(
-            'Daily limit: ${formatMoney(_dailyLimitCents)} from your remaining weekly budget and days left this week.',
+            'Daily limit: ${formatMoney(_dailyLimitCents)}, based on whats left in your weekly budget and the days left.',
             style: theme.textTheme.bodySmall,
           ),
           SizedBox(height: gap),

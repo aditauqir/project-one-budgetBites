@@ -369,7 +369,7 @@ class _PurchaseEditorState extends State<PurchaseEditor> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Category: ${inferCategory(_nameController.text)} · suggested from the item name',
+                'Category: ${inferCategory(_nameController.text)} (picked from the item name)',
                 style: const TextStyle(color: appMuted),
               ),
               if (_error != null) ...[

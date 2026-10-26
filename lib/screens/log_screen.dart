@@ -161,7 +161,7 @@ class _LogScreenState extends State<LogScreen> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Enter what you paid, the item, store and an optional note. Category is suggested from the item name.',
+                  'Add the price, item and store. Add a note if you want. We pick a category from the item name.',
                   style: TextStyle(color: appMuted),
                 ),
                 const SizedBox(height: 14),

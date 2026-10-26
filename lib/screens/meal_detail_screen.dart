@@ -64,7 +64,7 @@ class MealDetailScreen extends StatelessWidget {
           actions: const [
             PageHelp(
               title: 'Meal details',
-              message: 'Plan this meal before buying it, or log it now if you already paid. Lunch Lens uses your last three purchases to suggest a price. You can ignore it. Only Save purchase changes your spending.',
+              message: 'Save this meal to plan it for later, or log it after you buy it. Lunch Lens suggests a price based on your last three purchases.',
             ),
           ],
         ),

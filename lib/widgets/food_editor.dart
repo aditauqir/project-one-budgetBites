@@ -114,7 +114,7 @@ class _FoodEditorDialogState extends State<FoodEditorDialog> {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Category: ${inferCategory(_name.text)} (automatic)',
+              'Category: ${inferCategory(_name.text)} (picked from the name)',
               style: const TextStyle(color: appMuted),
             ),
           ),

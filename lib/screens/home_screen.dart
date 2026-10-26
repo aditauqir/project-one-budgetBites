@@ -381,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ? Semantics(
                                           image: true,
                                           label:
-                                              'Saxbys cafe photo placeholder',
+                                              'Saxbys cafe counter',
                                           child: Image.asset(
                                             'assets/images/saxbys-placeholder.png',
                                             fit: BoxFit.cover,

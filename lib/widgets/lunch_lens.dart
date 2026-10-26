@@ -51,7 +51,7 @@ class _LunchLensState extends State<LunchLens> {
             // no guesses when we have less than three earlier receipts.
             if (estimate == null)
               const Text(
-                'Not enough history. Log three purchases of this meal to see an estimate.',
+                'Log this meal three times to get a price suggestion.',
               )
             else ...[
               Text(
@@ -65,11 +65,11 @@ class _LunchLensState extends State<LunchLens> {
                 '${shortDate(estimate.inputs.last.purchasedAt)} – ${shortDate(estimate.inputs.first.purchasedAt)}',
               ),
               const Text(
-                'An average of what you paid before. Your next price may be different.',
+                'Based on past prices. Your next purchase may cost more or less.',
               ),
             ],
             const Text(
-              'You can ignore this estimate and enter your own price.',
+              'This is just a guide. Change the price when you plan or log it.',
             ),
             TextButton(
               onPressed: () => setState(() => _hidden = true),
