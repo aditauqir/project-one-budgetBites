@@ -1,10 +1,24 @@
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:sqflite/sqflite.dart' show DatabaseException;
 
 import 'data/app_database.dart';
 import 'data/preferences_store.dart';
 import 'models.dart';
+
+/// Thrown when a meal still has saved receipts. The app uses a restriction
+/// policy: the user clears the linked receipts first, so spending history is
+/// never detached or deleted without an explicit choice.
+class MealInUseException implements Exception {
+  const MealInUseException(this.purchaseCount);
+
+  final int purchaseCount;
+
+  @override
+  String toString() =>
+      'MealInUseException: $purchaseCount receipt(s) still linked';
+}
 
 class AppController extends ChangeNotifier {
   AppController({AppDatabase? database, PreferencesStore? preferences})
@@ -87,16 +101,25 @@ class AppController extends ChangeNotifier {
 
   Future<void> deleteFoodItem(FoodItem item) async {
     if (item.id == null) return;
-    await _database.deleteFoodItem(item.id!);
+    // Restriction policy: block the delete while receipts point at this meal.
+    // Counted from the loaded list first for a friendly dialog, then enforced
+    // again by the database foreign key in case the list is stale.
+    final linked = linkedPurchaseCount(item.id!);
+    if (linked > 0) throw MealInUseException(linked);
+    try {
+      await _database.deleteFoodItem(item.id!);
+    } on DatabaseException {
+      throw MealInUseException(linkedPurchaseCount(item.id!));
+    }
     await refresh();
   }
 
+  int linkedPurchaseCount(int mealId) =>
+      purchases.where((purchase) => purchase.foodItemId == mealId).length;
+
   // every receipt needs a meal link, even when it started from New item.
   // hey willow, every new receipt gets a meal id now. old unlinked receipts still show in History.
-  Future<void> savePurchase(
-    PurchaseEntry entry, {
-    bool saveToItems = false,
-  }) async {
+  Future<void> savePurchase(PurchaseEntry entry) async {
     if (entry.amountCents < 0 ||
         entry.itemName.trim().isEmpty ||
         entry.store.trim().isEmpty ||

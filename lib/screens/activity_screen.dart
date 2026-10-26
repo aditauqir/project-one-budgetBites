@@ -40,7 +40,6 @@ class ActivityScreen extends StatelessWidget {
             context,
             controller,
             plannedOnly: true,
-            saveToItems: true,
           ),
           icon: const Icon(Icons.add),
           label: const Text('Plan a meal'),

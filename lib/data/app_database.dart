@@ -9,12 +9,28 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
   Database? _database;
 
+  // One column list shared by onCreate and the v3 migration so the two cannot
+  // drift. A meal with saved receipts is protected: the user must clear the
+  // receipts first, so spending history is never silently detached or lost.
+  static const _purchaseColumns = '''
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    food_item_id INTEGER,
+    item_name TEXT NOT NULL,
+    store TEXT NOT NULL,
+    category TEXT NOT NULL,
+    amount_cents INTEGER NOT NULL CHECK(amount_cents >= 0),
+    servings INTEGER NOT NULL DEFAULT 1 CHECK(servings > 0),
+    purchased_at TEXT NOT NULL,
+    note TEXT NOT NULL DEFAULT '',
+    is_confirmed INTEGER NOT NULL DEFAULT 1 CHECK(is_confirmed IN (0, 1)),
+    FOREIGN KEY(food_item_id) REFERENCES food_items(id) ON DELETE RESTRICT''';
+
   Future<Database> get database async {
     if (_database != null) return _database!;
     final databasePath = p.join(await getDatabasesPath(), 'budget_bites.db');
     _database = await openDatabase(
       databasePath,
-      version: 2,
+      version: 3,
       onConfigure: (db) async => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, version) async {
         await db.execute('''
@@ -27,29 +43,42 @@ class AppDatabase {
             created_at TEXT NOT NULL
           )
         ''');
-        await db.execute('''
-          CREATE TABLE purchases (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            food_item_id INTEGER,
-            item_name TEXT NOT NULL,
-            store TEXT NOT NULL,
-            category TEXT NOT NULL,
-            amount_cents INTEGER NOT NULL CHECK(amount_cents >= 0),
-            servings INTEGER NOT NULL DEFAULT 1 CHECK(servings > 0),
-            purchased_at TEXT NOT NULL,
-            note TEXT NOT NULL DEFAULT '',
-            is_confirmed INTEGER NOT NULL DEFAULT 1 CHECK(is_confirmed IN (0, 1)),
-            FOREIGN KEY(food_item_id) REFERENCES food_items(id) ON DELETE SET NULL
-          )
-        ''');
+        await db.execute('CREATE TABLE purchases ($_purchaseColumns)');
         await db.execute(
           'CREATE INDEX purchases_date_index ON purchases(purchased_at)',
+        );
+        await db.execute(
+          'CREATE INDEX purchases_item_index ON purchases(food_item_id)',
         );
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await db.execute(
             'ALTER TABLE purchases ADD COLUMN servings INTEGER NOT NULL DEFAULT 1 CHECK(servings > 0)',
+          );
+        }
+        if (oldVersion < 3) {
+          // SQLite cannot alter a foreign key, so rebuild the table to change
+          // ON DELETE SET NULL into ON DELETE RESTRICT. Receipt ids and values
+          // are copied across, so existing history is untouched.
+          await db.execute('CREATE TABLE purchases_v3 ($_purchaseColumns)');
+          await db.execute('''
+            INSERT INTO purchases_v3 (
+              id, food_item_id, item_name, store, category, amount_cents,
+              servings, purchased_at, note, is_confirmed
+            )
+            SELECT
+              id, food_item_id, item_name, store, category, amount_cents,
+              servings, purchased_at, note, is_confirmed
+            FROM purchases
+          ''');
+          await db.execute('DROP TABLE purchases');
+          await db.execute('ALTER TABLE purchases_v3 RENAME TO purchases');
+          await db.execute(
+            'CREATE INDEX purchases_date_index ON purchases(purchased_at)',
+          );
+          await db.execute(
+            'CREATE INDEX purchases_item_index ON purchases(food_item_id)',
           );
         }
       },

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_controller.dart';
+import '../config.dart';
 import '../models.dart';
 import 'app_widgets.dart';
 import 'lunch_lens.dart';
@@ -12,7 +13,6 @@ Future<void> showPurchaseEditor(
   PurchaseEntry? purchase,
   bool plannedOnly = false,
   bool confirmPurchase = false,
-  bool saveToItems = false,
   String? initialNote,
   int? initialServings,
 }) {
@@ -30,7 +30,6 @@ Future<void> showPurchaseEditor(
       purchase: purchase,
       plannedOnly: plannedOnly,
       confirmPurchase: confirmPurchase,
-      saveToItems: saveToItems,
       initialNote: initialNote,
       initialServings: initialServings,
     ),
@@ -45,7 +44,6 @@ class PurchaseEditor extends StatefulWidget {
     this.purchase,
     this.plannedOnly = false,
     this.confirmPurchase = false,
-    this.saveToItems = false,
     this.initialNote,
     this.initialServings,
   });
@@ -55,7 +53,6 @@ class PurchaseEditor extends StatefulWidget {
   final PurchaseEntry? purchase;
   final bool plannedOnly;
   final bool confirmPurchase;
-  final bool saveToItems;
   final String? initialNote;
   final int? initialServings;
 
@@ -187,6 +184,9 @@ class _PurchaseEditorState extends State<PurchaseEditor> {
       _error = null;
     });
     try {
+      // Demo hook for the double-receipt check (see lib/config.dart). The
+      // button above is already disabled, so a second tap is ignored.
+      if (simulateSlowSave) await Future<void>.delayed(slowSaveDelay);
       final old = widget.purchase;
       await widget.controller.savePurchase(
         PurchaseEntry(
@@ -206,12 +206,15 @@ class _PurchaseEditorState extends State<PurchaseEditor> {
               ? false
               : old?.isConfirmed ?? true,
         ),
-        saveToItems: widget.saveToItems,
       );
       if (mounted) {
+        // Grab the messenger before popping. After pop this widget can be
+        // deactivated, and looking up an ancestor then throws.
+        final messenger = ScaffoldMessenger.of(context);
+        final navigator = Navigator.of(context);
         setState(() => _saving = false);
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
+        navigator.pop();
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
               isPlan ? 'Meal planned. Find it in Activity.' : 'Purchase saved.',
