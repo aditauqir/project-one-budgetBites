@@ -165,4 +165,21 @@ void main() {
       expect(estimate.cents, 483);
     });
   });
+
+  test('counterexample: a costly outlier distorts the mean', () {
+    final estimate = estimateLunch(
+      [
+        receipt(500, id: 1, at: DateTime(2026, 10, 21)),
+        receipt(2000, id: 2, at: DateTime(2026, 10, 22)),
+        receipt(500, id: 3, at: DateTime(2026, 10, 23)),
+      ],
+      mealId: 1,
+      before: now,
+    );
+
+    expect(estimate!.cents, 1000);
+    expect(estimate.baselineCents, 500);
+    // The helper loses to the last-price baseline on this case.
+    expect(estimate.cents, greaterThan(estimate.baselineCents));
+  });
 }
