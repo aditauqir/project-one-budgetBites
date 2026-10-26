@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/page_help.dart';
+
 import '../app_controller.dart';
 import '../models.dart';
 import '../widgets/app_widgets.dart';
@@ -15,68 +17,89 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   String _category = 'All';
+  // this choice filters both the receipts and their total.
+  String _period = 'This week';
+  bool _deleting = false;
 
   @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
     final today = dateOnly(DateTime.now());
     final weekStart = today.subtract(Duration(days: today.weekday - 1));
-    final weekPurchases = controller.confirmedPurchases
-        .where((entry) => !entry.purchasedAt.isBefore(weekStart))
-        .toList();
+    final now = DateTime.now();
+    // start at midnight for today, Monday for this week, or first of month.
+    final start = switch (_period) {
+      'Today' => today,
+      'This week' => weekStart,
+      'This month' => DateTime(now.year, now.month),
+      _ => DateTime(2020),
+    };
+    // planned meals and future dates should never count as bought food.
     final history = controller.confirmedPurchases
-        .where((entry) => _category == 'All' || entry.category == _category)
+        .where(
+          (entry) =>
+              !entry.purchasedAt.isBefore(start) &&
+              !entry.purchasedAt.isAfter(now) &&
+              (_category == 'All' || entry.category == _category),
+        )
         .toList();
-    final weekTotal = weekPurchases.fold(
+    // add the same rows we show, so the number matches the list.
+    // hey willow, if totals move into the data layer, use these same period and category filters.
+    final periodTotal = history.fold(
       0,
       (sum, entry) => sum + entry.amountCents,
     );
+    final gap = (MediaQuery.sizeOf(context).width * .05).clamp(16.0, 28.0);
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
       children: [
-        Text(
-          'Your spending story',
-          style: Theme.of(context).textTheme.headlineSmall
-              ?.copyWith(color: appInk, fontWeight: appHeadingWeight),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Confirmed purchases only',
-          style: TextStyle(color: appMuted),
+        const PageHeading(
+          title: 'History',
+          help: 'See what you bought here. Pick a time to check the total. Tap a purchase to fix the price or date. Use its menu if you want to delete it.',
         ),
         const SizedBox(height: 14),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Daily spending this week',
-                style: TextStyle(fontWeight: appEmphasisWeight, color: appInk),
+        // tap a period, then rebuild the total and the list below.
+        Wrap(
+          spacing: gap / 2,
+          runSpacing: gap / 2,
+          children: [
+            for (final period in [
+              'Today',
+              'This week',
+              'This month',
+              'All time',
+            ])
+              ChoiceChip(
+                label: Text(period),
+                selected: _period == period,
+                onSelected: (_) => setState(() => _period = period),
               ),
-              const SizedBox(height: 14),
-              SizedBox(height: 178, child: _WeekChart(controller: controller)),
-              const Divider(height: 22),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text('This week', style: TextStyle(color: appMuted)),
-                  ),
-                  Text(
-                    formatMoney(weekTotal),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: appAmountWeight,
-                      color: appInk,
-                    ),
-                  ),
-                ],
-              ),
-              Text(
-                '${weekPurchases.length} confirmed purchases',
-                style: const TextStyle(color: appMuted, fontSize: 12),
-              ),
-            ],
-          ),
+          ],
+        ),
+        SizedBox(height: gap),
+        Text(
+          formatMoney(periodTotal),
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
+        Text(
+          '${history.length} purchase${history.length == 1 ? '' : 's'} · $_period${_category == 'All' ? '' : ' · $_category'}',
+        ),
+        SizedBox(height: gap),
+        // the chart stays on this week. the period above controls the receipt list.
+        Text(
+          'Daily spending this week',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        SizedBox(
+          height: gap * 8,
+          child: _WeekChart(controller: controller),
+        ),
+        SizedBox(height: gap),
+        TextButton.icon(
+          onPressed: () =>
+              showPurchaseEditor(context, controller, saveToItems: true),
+          icon: const Icon(Icons.add),
+          label: const Text('Add purchase'),
         ),
         const SizedBox(height: 18),
         SectionHeading(
@@ -95,13 +118,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ),
         const SizedBox(height: 8),
         if (history.isEmpty)
-          AppCard(
-            child: EmptyMessage(
-              title: 'No confirmed purchases yet',
-              detail:
-                  'Items you confirm from the Log or Activity page show here.',
-              icon: AppIcons.receipt,
-            ),
+          const EmptyMessage(
+            title: 'No purchases here yet',
+            detail: 'Try another period or add a purchase.',
           )
         else
           ...history.map(
@@ -119,14 +138,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  // ask first, then remove this receipt and refresh the totals.
   Future<void> _delete(BuildContext context, PurchaseEntry entry) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete this purchase?'),
-        content: const Text(
-          'The purchase will be removed from your history and spending totals.',
-        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -139,10 +156,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ],
       ),
     );
-    if (confirmed == true) await widget.controller.deletePurchase(entry);
+    if (confirmed != true || _deleting || !mounted) return;
+    _deleting = true;
+    try {
+      await widget.controller.deletePurchase(entry);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(this.context).showSnackBar(
+          const SnackBar(
+            content: Text('Couldn’t delete this purchase. Please try again.'),
+          ),
+        );
+      }
+    } finally {
+      _deleting = false;
+    }
   }
 }
 
+// tap or long press to fix a receipt. the menu has edit and delete too.
 class _PurchaseRow extends StatelessWidget {
   const _PurchaseRow({
     required this.entry,
@@ -154,63 +186,26 @@ class _PurchaseRow extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
-  Widget build(BuildContext context) => AppCard(
-    padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
-    child: Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: appPrimarySoft,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            entry.category == 'Drinks' ? AppIcons.coffee : AppIcons.restaurant,
-            color: appIconColor,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                entry.itemName,
-                style: const TextStyle(
-                  fontWeight: appEmphasisWeight,
-                  color: appInk,
-                ),
-              ),
-              Text(
-                '${entry.store} · ${entry.servings} serving${entry.servings == 1 ? '' : 's'} · ${shortDate(entry.purchasedAt)} · ${TimeOfDay.fromDateTime(entry.purchasedAt).format(context)}',
-                style: const TextStyle(color: appMuted, fontSize: 12),
-              ),
-              if (entry.note.isNotEmpty)
-                Text(
-                  entry.note,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: appMuted, fontSize: 12),
-                ),
-            ],
-          ),
-        ),
-        Text(
-          formatMoney(entry.amountCents),
-          style: const TextStyle(fontWeight: appEmphasisWeight),
-        ),
-        PopupMenuButton<String>(
-          onSelected: (value) => value == 'delete' ? onDelete() : onEdit(),
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'edit', child: Text('Edit')),
-            PopupMenuItem(value: 'delete', child: Text('Delete')),
-          ],
-        ),
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    title: Text('${entry.itemName} · ${formatMoney(entry.amountCents)}'),
+    subtitle: Text(
+      '${entry.store} · ${shortDate(entry.purchasedAt)} · ${TimeOfDay.fromDateTime(entry.purchasedAt).format(context)}${entry.note.isEmpty ? '' : '\n${entry.note}'}',
+    ),
+    onTap: onEdit,
+    onLongPress: onEdit,
+    trailing: PopupMenuButton<String>(
+      tooltip: 'Purchase options',
+      onSelected: (value) => value == 'delete' ? onDelete() : onEdit(),
+      itemBuilder: (_) => const [
+        PopupMenuItem(value: 'edit', child: Text('Edit')),
+        PopupMenuItem(value: 'delete', child: Text('Delete')),
       ],
     ),
   );
 }
+
+// this chart still shows each day of the current week. filters above control the list total.
 
 class _WeekChart extends StatelessWidget {
   const _WeekChart({required this.controller});

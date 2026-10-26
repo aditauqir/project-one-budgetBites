@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app_controller.dart';
+import 'meal_detail_screen.dart';
+import '../widgets/food_editor.dart';
 import '../data/azalea_menu.dart';
 import '../data/blossom_tree.dart';
 import '../data/brickstone_menu.dart';
@@ -19,18 +22,19 @@ class HomeScreen extends StatelessWidget {
     required this.controller,
     required this.onOpenMenu,
     required this.onOpenLog,
-    required this.onOpenActivity,
+    required this.onOpenSettings,
   });
 
   final AppController controller;
   final ValueChanged<String> onOpenMenu;
   final VoidCallback onOpenLog;
-  final VoidCallback onOpenActivity;
+  final VoidCallback onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
-    final spent = controller.spentThisWeekCents;
-    final budget = controller.settings.weeklyBudgetCents;
+    // big amount is for today, weekly money stays under the bar.
+    final spent = controller.spentTodayCents;
+    final budget = controller.settings.dailyBudgetCents;
     final remaining = budget - spent;
     final ratio = budget <= 0 ? 0.0 : (spent / budget).clamp(0.0, 1.0);
     final places = controller.settings.favoritePlaces;
@@ -102,7 +106,7 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         Text(
-          'of ${_budgetDisplay(budget)}',
+          'of ${_budgetDisplay(budget)} today',
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.titleLarge
               ?.copyWith(color: appInk, fontWeight: FontWeight.w400),
@@ -119,6 +123,17 @@ class HomeScreen extends StatelessWidget {
                 : spent >= budget * .8
                 ? appWarning
                 : _homePrimary,
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.only(
+            top: (MediaQuery.sizeOf(context).width * .02).clamp(6.0, 12.0),
+          ),
+          child: Text(
+            '${formatMoney(controller.remainingWeekCents)} / ${formatMoney(controller.settings.weeklyBudgetCents)} weekly budget left',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: appMuted),
           ),
         ),
         const SizedBox(height: 12),
@@ -142,12 +157,40 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ),
+        SizedBox(
+          height: (MediaQuery.sizeOf(context).width * .05).clamp(16.0, 28.0),
+        ),
+        // saved meals open their details, then the user can plan or log one.
+        SectionHeading(
+          'Your meals',
+          trailing: TextButton.icon(
+            onPressed: () => showFoodEditor(context, controller),
+            icon: const Icon(Icons.add),
+            label: const Text('Add meal'),
+          ),
+        ),
+        if (controller.foodItems.isEmpty)
+          const Text('Save a meal to plan it or log a purchase.')
+        else
+          ...controller.foodItems.map(
+            (meal) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(meal.name),
+              subtitle: Text(
+                '${meal.store} · Estimated ${formatMoney(meal.lastPriceCents)}',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showMealDetails(context, controller, meal),
+              onLongPress: () =>
+                  showFoodEditor(context, controller, item: meal),
+            ),
+          ),
         const SizedBox(height: 34),
         Row(
           children: [
             Expanded(
               child: Text(
-                'Today at a glance',
+                'Today',
                 style: Theme.of(context).textTheme.titleLarge
                     ?.copyWith(fontWeight: appHeadingWeight, color: appInk),
               ),
@@ -165,14 +208,15 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
+        // weekly balance is already up top, keep this part about today.
         _DailyGlance(
           remaining: controller.remainingTodayCents,
           allowance: controller.settings.dailyBudgetCents,
-          onAdjust: onOpenActivity,
+          onAdjust: onOpenSettings,
         ),
         const SizedBox(height: 20),
         SectionHeading(
-          'Grab a bite',
+          'Places',
           fontWeight: appHeadingWeight,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
@@ -358,8 +402,8 @@ class HomeScreen extends StatelessWidget {
                                     : isBrickstone
                                     ? 'Pizza · pasta · sandwiches'
                                     : items.isEmpty
-                                    ? 'Tap to open saved menu'
-                                    : '${items.length} saved items · tap to open',
+                                    ? 'View menu'
+                                    : '${items.length} saved meals',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -467,33 +511,6 @@ class HomeScreen extends StatelessWidget {
               },
             ),
           ),
-        const SizedBox(height: 20),
-        SectionHeading('Your week'),
-        const SizedBox(height: 8),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Suggested for today: ${formatMoney(controller.suggestedDailyBudgetCents)}',
-                style: const TextStyle(
-                  fontWeight: appEmphasisWeight,
-                  color: appInk,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Simple plan based on what is left in the weekly budget. ${controller.suggestionExplanation}.',
-                style: const TextStyle(color: appMuted),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${controller.confirmedPurchases.length} confirmed purchases recorded',
-                style: const TextStyle(fontSize: 12, color: appMuted),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -669,7 +686,7 @@ class _DailyGlance extends StatelessWidget {
           child: Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: isOver ? 'You are ' : 'You have '),
+                // just the amount and what it means, no long sentence.
                 TextSpan(
                   text: amount,
                   style: TextStyle(
@@ -677,11 +694,7 @@ class _DailyGlance extends StatelessWidget {
                     fontWeight: FontWeight.w400,
                   ),
                 ),
-                TextSpan(
-                  text: isOver
-                      ? ' over today’s allowance'
-                      : ' left to spend for the day',
-                ),
+                TextSpan(text: isOver ? ' over today’s budget' : ' left today'),
               ],
             ),
             style: Theme.of(context).textTheme.bodyLarge
@@ -698,7 +711,7 @@ class _DailyGlance extends StatelessWidget {
             spacing: 2,
             children: [
               Text(
-                'Daily allowance ${formatMoney(allowance)}',
+                'Daily budget ${formatMoney(allowance)}',
                 style: Theme.of(context).textTheme.bodyMedium
                     ?.copyWith(color: colors.onSurfaceVariant),
               ),
@@ -711,7 +724,7 @@ class _DailyGlance extends StatelessWidget {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(
-                  'Adjust',
+                  'Change budget',
                   style: const TextStyle(
                     decoration: TextDecoration.underline,
                     decorationColor: _homeIconColor,

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../widgets/page_help.dart';
+
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app_controller.dart';
@@ -9,6 +12,7 @@ import '../models.dart';
 import '../widgets/app_widgets.dart';
 import '../widgets/food_editor.dart';
 import '../widgets/purchase_editor.dart';
+import 'meal_detail_screen.dart';
 
 enum _LogPath { existing, newItem, menu }
 
@@ -73,15 +77,9 @@ class _LogScreenState extends State<LogScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
       children: [
-        Text(
-          'Log a purchase',
-          style: Theme.of(context).textTheme.headlineSmall
-              ?.copyWith(color: appInk, fontWeight: appHeadingWeight),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Choose where the item comes from. Only a saved purchase changes your totals.',
-          style: TextStyle(color: appMuted),
+        const PageHeading(
+          title: 'Meals',
+          help: 'Pick a saved meal, add a new one, or browse a place menu. Open a meal to plan it. If you already bought it, log what you paid.',
         ),
         const SizedBox(height: 16),
         Row(
@@ -117,7 +115,7 @@ class _LogScreenState extends State<LogScreen> {
         const SizedBox(height: 18),
         if (_path == _LogPath.existing) ...[
           SectionHeading(
-            'Choose an existing item',
+            'Saved meals',
             trailing: IconButton(
               onPressed: () => showFoodEditor(context, widget.controller),
               icon: const Icon(AppIcons.add),
@@ -138,11 +136,8 @@ class _LogScreenState extends State<LogScreen> {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: _CatalogItem(
                   item: item,
-                  onTap: () => showPurchaseEditor(
-                    context,
-                    widget.controller,
-                    foodItem: item,
-                  ),
+                  onTap: () =>
+                      showMealDetails(context, widget.controller, item),
                   showPlus: false,
                   onDelete: () => _deleteFoodItem(context, item),
                 ),
@@ -157,7 +152,7 @@ class _LogScreenState extends State<LogScreen> {
                 const Icon(AppIcons.note, color: appIconColor, size: 28),
                 const SizedBox(height: 8),
                 const Text(
-                  'Add a new item',
+                  'New meal',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: appEmphasisWeight,
@@ -186,7 +181,7 @@ class _LogScreenState extends State<LogScreen> {
             ),
           ),
         ] else ...[
-          SectionHeading('Choose a place'),
+          SectionHeading('Places'),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -208,7 +203,7 @@ class _LogScreenState extends State<LogScreen> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Local menu snapshot. Package prices, serving sizes, and minimums vary; review the total before saving.',
+              'Prices and serving sizes may vary. Check the final price before buying.',
               style: TextStyle(color: appMuted, fontSize: 12),
             ),
             Align(
@@ -225,42 +220,46 @@ class _LogScreenState extends State<LogScreen> {
             for (final section in azaleaCateringSections) ...[
               SectionHeading(section),
               const SizedBox(height: 8),
-              ...azaleaCateringMenu.where((item) => item.section == section).map((
-                item,
-              ) {
-                final remaining = widget.controller.remainingTodayCents;
-                final budgetPrice = item.minimumOrderEstimateCents;
-                final color = _budgetColor(
-                  item.priceMaxCents ?? budgetPrice,
-                  remaining,
-                );
-                final foodItem = FoodItem(
-                  name: item.name,
-                  store: 'Azalea Fresh Market',
-                  category: inferCategory(item.name),
-                  lastPriceCents: budgetPrice,
-                  createdAt: DateTime.now(),
-                );
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _MenuListingCard(
-                    item: item,
-                    priceColor: color,
-                    budgetLabel: _menuBudgetLabel(item, budgetPrice, remaining),
-                    displayPrice: _menuPriceLabel(item, budgetPrice),
-                    onAdd: () => showPurchaseEditor(
-                      context,
-                      widget.controller,
-                      foodItem: foodItem,
-                      saveToItems: true,
-                      initialServings: item.minimumQuantity,
-                      initialNote: item.description.isEmpty
-                          ? 'Azalea catering menu listing. Confirm the final checkout total before saving.'
-                          : 'Azalea catering menu: ${item.description} Confirm the final checkout total before saving.',
-                    ),
-                  ),
-                );
-              }),
+              ...azaleaCateringMenu
+                  .where((item) => item.section == section)
+                  .map((item) {
+                    final remaining = widget.controller.remainingTodayCents;
+                    final budgetPrice = item.minimumOrderEstimateCents;
+                    final color = _budgetColor(
+                      item.priceMaxCents ?? budgetPrice,
+                      remaining,
+                    );
+                    final foodItem = FoodItem(
+                      name: item.name,
+                      store: 'Azalea Fresh Market',
+                      category: inferCategory(item.name),
+                      lastPriceCents: budgetPrice,
+                      createdAt: DateTime.now(),
+                    );
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _MenuListingCard(
+                        item: item,
+                        priceColor: color,
+                        budgetLabel: _menuBudgetLabel(
+                          item,
+                          budgetPrice,
+                          remaining,
+                        ),
+                        displayPrice: _menuPriceLabel(item, budgetPrice),
+                        // show details first so this does not count as spending by accident.
+                        onAdd: () => showMealDetails(
+                          context,
+                          widget.controller,
+                          foodItem,
+                          servings: item.minimumQuantity,
+                          note: item.description.isEmpty
+                              ? 'Catering order. Check the final total.'
+                              : item.description,
+                        ),
+                      ),
+                    );
+                  }),
             ],
           ] else if (restaurantMenu.isNotEmpty) ...[
             SectionHeading(
@@ -301,13 +300,12 @@ class _LogScreenState extends State<LogScreen> {
                     priceColor: color,
                     budgetLabel: _budgetLabel(budgetPrice, remaining),
                     displayPrice: _menuPriceLabel(item, budgetPrice),
-                    onAdd: () => showPurchaseEditor(
+                    // show details first so this does not count as spending by accident.
+                    onAdd: () => showMealDetails(
                       context,
                       widget.controller,
-                      foodItem: foodItem,
-                      saveToItems: true,
-                      initialNote:
-                          '$restaurantName menu snapshot. Confirm the checkout price before saving.',
+                      foodItem,
+                      note: 'Check the final price before buying.',
                     ),
                   ),
                 );
@@ -334,11 +332,8 @@ class _LogScreenState extends State<LogScreen> {
                   color: color,
                   budgetLabel: label,
                   showPlus: true,
-                  onTap: () => showPurchaseEditor(
-                    context,
-                    widget.controller,
-                    foodItem: item,
-                  ),
+                  onTap: () =>
+                      showMealDetails(context, widget.controller, item),
                   onDelete: () => _deleteFoodItem(context, item),
                 ),
               );
@@ -434,10 +429,7 @@ class _LogScreenState extends State<LogScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete saved item?'),
-        content: Text(
-          '“${item.name}” will be removed from saved items. Purchase history stays.',
-        ),
+        title: Text('Delete “${item.name}”?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -678,7 +670,7 @@ class _MenuListingCard extends StatelessWidget {
             ),
             IconButton(
               onPressed: onAdd,
-              tooltip: 'Review and add to purchase log',
+              tooltip: 'View meal',
               visualDensity: VisualDensity.compact,
               icon: Icon(AppIcons.addCircle, color: priceColor),
             ),

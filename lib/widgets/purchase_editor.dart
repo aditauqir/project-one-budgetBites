@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_controller.dart';
 import '../models.dart';
 import 'app_widgets.dart';
+import 'lunch_lens.dart';
 
 Future<void> showPurchaseEditor(
   BuildContext context,
@@ -18,6 +19,9 @@ Future<void> showPurchaseEditor(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
+    // use Cancel to leave, so a swipe cannot close this halfway through a save.
+    isDismissible: false,
+    enableDrag: false,
     useSafeArea: true,
     backgroundColor: appCanvas,
     builder: (context) => PurchaseEditor(
@@ -88,7 +92,10 @@ class _PurchaseEditorState extends State<PurchaseEditor> {
       text: purchase?.note ?? widget.initialNote ?? '',
     );
     _customStoreController = TextEditingController();
-    _pickedAt = purchase?.purchasedAt ?? DateTime.now();
+    // a plan could be from yesterday. finishing starts with the time we bought it now.
+    _pickedAt = widget.confirmPurchase
+        ? DateTime.now()
+        : purchase?.purchasedAt ?? DateTime.now();
     if (widget.confirmPurchase && _pickedAt.isAfter(DateTime.now())) {
       _pickedAt = DateTime.now();
     }
@@ -117,7 +124,11 @@ class _PurchaseEditorState extends State<PurchaseEditor> {
       context: context,
       initialDate: _pickedAt,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate:
+          widget.plannedOnly ||
+              (widget.purchase?.isConfirmed == false && !widget.confirmPurchase)
+          ? DateTime.now().add(const Duration(days: 365))
+          : DateTime.now(),
     );
     if (date == null || !mounted) return;
     final time = await showTimePicker(
@@ -136,7 +147,10 @@ class _PurchaseEditorState extends State<PurchaseEditor> {
     });
   }
 
+  // check the fields first, then lock Save until this one write is finished.
+  // hey willow, keep the same id when a plan becomes a receipt. dont insert another one.
   Future<void> _save() async {
+    if (_saving) return;
     final name = _nameController.text.trim();
     final price = parseMoneyToCents(_priceController.text);
     final servings = int.tryParse(_servingsController.text.trim());
@@ -160,6 +174,14 @@ class _PurchaseEditorState extends State<PurchaseEditor> {
       return;
     }
 
+    final isPlan =
+        widget.plannedOnly ||
+        (widget.purchase?.isConfirmed == false && !widget.confirmPurchase);
+    // future plans are fine. future receipts should not change spending.
+    if (!isPlan && _pickedAt.isAfter(DateTime.now())) {
+      setState(() => _error = 'Choose a time that has already passed.');
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
@@ -168,6 +190,7 @@ class _PurchaseEditorState extends State<PurchaseEditor> {
       final old = widget.purchase;
       await widget.controller.savePurchase(
         PurchaseEntry(
+          // keep the plan id when finishing, so it becomes one receipt.
           id: old?.id,
           foodItemId: old?.foodItemId ?? widget.foodItem?.id,
           itemName: name,
@@ -185,7 +208,17 @@ class _PurchaseEditorState extends State<PurchaseEditor> {
         ),
         saveToItems: widget.saveToItems,
       );
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        setState(() => _saving = false);
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isPlan ? 'Meal planned. Find it in Activity.' : 'Purchase saved.',
+            ),
+          ),
+        );
+      }
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -208,134 +241,155 @@ class _PurchaseEditorState extends State<PurchaseEditor> {
         (widget.purchase != null &&
             !widget.purchase!.isConfirmed &&
             !widget.confirmPurchase);
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, 12, 20, bottomInset + 20),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                width: 38,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: appBorder,
-                  borderRadius: BorderRadius.circular(8),
+    final gap = (MediaQuery.sizeOf(context).width * .05).clamp(16.0, 28.0);
+    return PopScope(
+      canPop: !_saving,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(gap, gap / 2, gap, bottomInset + gap),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: appBorder,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              widget.purchase == null
-                  ? (isPlan ? 'Plan an item' : 'Log a purchase')
-                  : (widget.confirmPurchase
-                        ? 'Confirm purchase'
-                        : 'Edit entry'),
-              style: Theme.of(context).textTheme.headlineSmall
-                  ?.copyWith(color: appInk, fontWeight: appHeadingWeight),
-            ),
-            const SizedBox(height: 16),
-            Text('Total paid', style: Theme.of(context).textTheme.titleMedium),
-            TextField(
-              controller: _priceController,
-              autofocus: widget.foodItem == null && widget.purchase == null,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+              const SizedBox(height: 18),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _saving ? null : () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
               ),
-              decoration: const InputDecoration(
-                prefixText: r'$ ',
-                hintText: '0.00',
+              Text(
+                widget.purchase == null
+                    ? (isPlan ? 'Plan meal' : 'Log purchase')
+                    : (widget.confirmPurchase ? 'Log purchase' : 'Edit entry'),
+                style: Theme.of(context).textTheme.headlineSmall
+                    ?.copyWith(color: appInk, fontWeight: appHeadingWeight),
               ),
-              style: Theme.of(context).textTheme.headlineLarge
-                  ?.copyWith(fontWeight: appAmountWeight),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _nameController,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Item name',
-                hintText: 'e.g. campus sandwich',
+              const SizedBox(height: 16),
+              if (!isPlan) ...[
+                LunchLens(
+                  controller: widget.controller,
+                  mealId: widget.purchase?.foodItemId ?? widget.foodItem?.id,
+                  before: _pickedAt,
+                  editingId: widget.purchase?.id,
+                ),
+                SizedBox(height: gap),
+              ],
+              Text(
+                isPlan ? 'Estimated price' : 'What did you pay?',
+                style: Theme.of(context).textTheme.titleMedium,
               ),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _servingsController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Servings',
-                hintText: '1',
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text('Store', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: stores.map((store) {
-                return ChoiceChip(
-                  label: Text(store),
-                  selected: _store == store,
-                  onSelected: (_) => setState(() => _store = store),
-                );
-              }).toList(),
-            ),
-            if (_store == 'Other') ...[
-              const SizedBox(height: 8),
               TextField(
-                controller: _customStoreController,
+                controller: _priceController,
+                autofocus: widget.foodItem == null && widget.purchase == null,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  prefixText: r'$ ',
+                  hintText: '0.00',
+                ),
+                style: Theme.of(context).textTheme.headlineLarge
+                    ?.copyWith(fontWeight: appAmountWeight),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _nameController,
                 textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
-                  labelText: 'Store or place',
-                  hintText: 'Type the restaurant or store name',
+                  labelText: 'Item name',
+                  hintText: 'e.g. campus sandwich',
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _servingsController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Servings',
+                  hintText: '1',
                 ),
               ),
-            ],
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _pickDateTime,
-              icon: const Icon(AppIcons.clock),
-              label: Text(
-                '${shortDate(_pickedAt)} · ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(_pickedAt))}',
+              const SizedBox(height: 16),
+              Text('Store', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: stores.map((store) {
+                  return ChoiceChip(
+                    label: Text(store),
+                    selected: _store == store,
+                    onSelected: (_) => setState(() => _store = store),
+                  );
+                }).toList(),
               ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _noteController,
-              maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Note',
-                hintText: 'Any details to remember',
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Category: ${inferCategory(_nameController.text)} · suggested from the item name',
-              style: const TextStyle(color: appMuted),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(_error!, style: const TextStyle(color: appError)),
-            ],
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _saving ? null : _save,
-                icon: Icon(isPlan ? AppIcons.listPlus : AppIcons.save),
+              if (_store == 'Other') ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _customStoreController,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Store or place',
+                    hintText: 'Type the restaurant or store name',
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _pickDateTime,
+                icon: const Icon(AppIcons.clock),
                 label: Text(
-                  _saving
-                      ? 'Saving...'
-                      : isPlan
-                      ? 'Add to checklist'
-                      : 'Save purchase',
+                  '${shortDate(_pickedAt)} · ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(_pickedAt))}',
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 10),
+              TextField(
+                controller: _noteController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Note',
+                  hintText: 'Any details to remember',
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Category: ${inferCategory(_nameController.text)} · suggested from the item name',
+                style: const TextStyle(color: appMuted),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(_error!, style: const TextStyle(color: appError)),
+              ],
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _saving ? null : _save,
+                  icon: Icon(isPlan ? AppIcons.listPlus : AppIcons.save),
+                  label: Text(
+                    _saving
+                        ? 'Saving...'
+                        : isPlan
+                        ? 'Save plan'
+                        : 'Save purchase',
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

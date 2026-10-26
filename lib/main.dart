@@ -211,32 +211,16 @@ class _AppShellState extends State<AppShell> {
     });
   }
 
-  void _openActivity() {
+  // hey willow, this budget shortcut goes to Settings, not the meal plans.
+  void _openSettings() {
     setState(() {
-      _selectedIndex = 1;
+      _selectedIndex = 4;
       _menuStore = null;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      HomeScreen(
-        controller: widget.controller,
-        onOpenMenu: _openMenu,
-        onOpenLog: _openLog,
-        onOpenActivity: _openActivity,
-      ),
-      ActivityScreen(controller: widget.controller),
-      LogScreen(
-        controller: widget.controller,
-        initialStore: _menuStore,
-        onStoreConsumed: () => _menuStore = null,
-      ),
-      HistoryScreen(controller: widget.controller),
-      SettingsScreen(controller: widget.controller),
-    ];
-
     return Scaffold(
       body: SafeArea(
         child: AnimatedBuilder(
@@ -268,6 +252,24 @@ class _AppShellState extends State<AppShell> {
                 ),
               );
             }
+            // rebuild the pages with fresh totals after a save or delete.
+            // hey willow, screens need fresh controller data here after your writes finish.
+            final pages = [
+              HomeScreen(
+                controller: widget.controller,
+                onOpenMenu: _openMenu,
+                onOpenLog: _openLog,
+                onOpenSettings: _openSettings,
+              ),
+              ActivityScreen(controller: widget.controller),
+              LogScreen(
+                controller: widget.controller,
+                initialStore: _menuStore,
+                onStoreConsumed: () => _menuStore = null,
+              ),
+              HistoryScreen(controller: widget.controller),
+              SettingsScreen(controller: widget.controller),
+            ];
             return IndexedStack(index: _selectedIndex, children: pages);
           },
         ),
