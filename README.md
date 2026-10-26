@@ -1,5 +1,7 @@
 # Budget Bites
 
+![Budget Bites icon](assets/images/iconbudgetBites.jpg)
+
 Budget Bites helps us keep track of food and drink money around campus. We use it to check what is left before buying, plan things for today, and see where the money went.
 
 ## The screens
