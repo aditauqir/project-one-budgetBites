@@ -85,6 +85,22 @@ class PreferencesStore {
     );
   }
 
+  // The demo seed writes budgets directly so it does not have to load and
+  // rewrite the rest of the profile just to change two numbers.
+  Future<void> saveBudgets({
+    required int dailyCents,
+    required int weeklyCents,
+  }) async {
+    await _preferences.setInt('budget.dailyCents', dailyCents);
+    await _preferences.setInt('budget.weeklyCents', weeklyCents);
+  }
+
+  Future<int> demoSeedVersion() async =>
+      await _preferences.getInt('demo.seedVersion') ?? 0;
+
+  Future<void> saveDemoSeedVersion(int version) =>
+      _preferences.setInt('demo.seedVersion', version);
+
   Future<void> _saveOptionalInt(String key, int? value) async {
     if (value == null) {
       await _preferences.remove(key);

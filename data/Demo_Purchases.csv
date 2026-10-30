@@ -1,0 +1,10 @@
+record_type,restaurant,item,date,amount,status,notes
+purchase,Blossom Tree,Beef Taco,2026-10-25,4.50,confirmed,double-save check first receipt; delete during demo
+purchase,Blossom Tree,Beef Taco,2026-10-25,6.00,confirmed,double-save check second receipt; edit to 5.50 during demo
+purchase,Blossom Tree,Chicken Bibimbap,2026-10-26,15.50,confirmed,fictional demo receipt amount
+purchase,Blossom Tree,Chicken Bibimbap,2026-10-27,16.00,confirmed,fictional demo receipt amount
+purchase,Blossom Tree,Chicken Bibimbap,2026-10-28,16.50,confirmed,fictional demo receipt amount
+purchase,BrickStone Cafe & Restaurant,Chicken Caesar Salad,2026-10-29,11.50,confirmed,fictional demo receipt amount
+purchase,Blossom Tree,Yuzu Lemonade,2026-10-29,4.75,confirmed,fictional demo receipt amount
+plan,Blossom Tree,Beef Bibimbap,2026-10-29,17.00,planned only,not a confirmed purchase and should not count in spending
+saved_meal,Blossom Tree,Tofu Bibimbap,,16.00,no purchases,leave with zero confirmed receipts for the no-data example

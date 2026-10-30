@@ -39,6 +39,8 @@ class AppController extends ChangeNotifier {
     loadError = null;
     notifyListeners();
     try {
+      // One-time: build the local database from data/Demo_Purchases.csv so the
+      // app and the demo handouts cannot drift apart.
       settings = await _preferences.load();
       await refresh(notify: false);
     } catch (error) {

@@ -64,6 +64,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - data/Demo_Purchases.csv
     - assets/icons/bowl-food.svg
     - assets/icons/question-mark.svg
     - assets/icons/clock.svg

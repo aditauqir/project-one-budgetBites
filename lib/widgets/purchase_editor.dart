@@ -213,13 +213,20 @@ class _PurchaseEditorState extends State<PurchaseEditor> {
         final messenger = ScaffoldMessenger.of(context);
         final navigator = Navigator.of(context);
         setState(() => _saving = false);
+        // Show the budget result right where the save happened, so the user
+        // does not have to leave the screen and do the math themselves.
+        final left = widget.controller.remainingTodayCents;
+        final budgetResult = left < 0
+            ? '${formatMoney(left.abs())} over today\'s budget'
+            : '${formatMoney(left)} left today';
+        final message = isPlan
+            ? 'Meal planned. Find it in Activity.'
+            : isSameDay(_pickedAt, DateTime.now())
+            ? 'Purchase saved · $budgetResult'
+            : 'Purchase saved.';
         navigator.pop();
         messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              isPlan ? 'Meal planned. Find it in Activity.' : 'Purchase saved.',
-            ),
-          ),
+          SnackBar(content: Text(message), duration: const Duration(seconds: 5)),
         );
       }
     } catch (error) {

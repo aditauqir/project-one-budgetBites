@@ -1,0 +1,5 @@
+step,restaurant,item,date,amount,expected item total
+starting first receipt,Blossom Tree,Beef Taco,2026-10-25,4.50,4.50
+starting second receipt,Blossom Tree,Beef Taco,2026-10-25,6.00,10.50
+edit second to 5.50,Blossom Tree,Beef Taco,2026-10-25,5.50,10.00
+delete first,Blossom Tree,Beef Taco,2026-10-25,delete 4.50,5.50

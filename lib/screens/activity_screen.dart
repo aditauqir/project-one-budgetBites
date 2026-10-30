@@ -28,8 +28,12 @@ class ActivityScreen extends StatelessWidget {
           title: 'Plans',
           help: 'These meals are still planned. Tap Log purchase when you buy one, then enter what you paid. Reset removes a plan. Your old purchases stay in History.',
         ),
+        // Keep this balance in words, so an over-budget day does not read
+        // as a negative amount "left".
         Text(
-          '${formatMoney(controller.remainingTodayCents)} left today',
+          controller.remainingTodayCents < 0
+              ? '${formatMoney(controller.remainingTodayCents.abs())} over today\'s budget'
+              : '${formatMoney(controller.remainingTodayCents)} left today',
           style: theme.textTheme.titleLarge,
         ),
         SizedBox(height: gap),
