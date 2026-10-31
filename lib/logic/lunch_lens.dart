@@ -40,7 +40,6 @@ LunchEstimate? estimateLunch(
   if (valid.length < 3) return null;
   // newest three only. tied times use the receipt id so the order stays stable.
   final inputs = valid.take(3).toList();
-  final sum = inputs.fold(0, (total, entry) => total + entry.amountCents);
-  // cents are whole numbers. adding 1 before dividing by 3 rounds to nearest cent.
-  return LunchEstimate(inputs, (sum + 1) ~/ 3, inputs.first.amountCents);
+  final prices = inputs.map((entry) => entry.amountCents).toList()..sort();
+  return LunchEstimate(inputs, prices[1], inputs.first.amountCents);
 }
