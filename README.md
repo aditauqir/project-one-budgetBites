@@ -6,6 +6,8 @@ Budget Bites helps us keep track of food and drink money around campus. We use i
 
 [Lunch Lens helper details](AI_FEATURE.md)
 
+[ClickUp board and contribution evidence](Kanban_Contribution_Evidence.pdf)
+
 ## The screens
 
 - Home shows weekly money left, today's spending, favorite places, and a small daily spending suggestion.
