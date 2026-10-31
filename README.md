@@ -8,6 +8,8 @@ Budget Bites helps us keep track of food and drink money around campus. We use i
 
 [ClickUp board and contribution evidence](Kanban_Contribution_Evidence.pdf)
 
+[ClickUp board](https://app.clickup.com/90141769340/v/li/901422293926) (sign-in required)
+
 ## The screens
 
 - Home shows weekly money left, today's spending, favorite places, and a small daily spending suggestion.
